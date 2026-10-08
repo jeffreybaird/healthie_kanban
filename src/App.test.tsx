@@ -214,3 +214,91 @@ describe('Item creation', () => {
     expect(within(screen.getByRole('region', { name: 'To Do' })).queryByText('Unavailable assignment')).toBeNull()
   })
 })
+
+describe('Character loading recovery', () => {
+  it('retries a failure without submitting or losing the title, then allows item creation', async () => {
+    let resolveRetry!: (response: Response) => void
+    fetchMock.mockResolvedValueOnce(new Response('{}', { status: 503 }))
+      .mockImplementationOnce(() => new Promise<Response>(resolve => { resolveRetry = resolve }))
+    render(<App />)
+    await screen.findByRole('alert')
+
+    const title = screen.getByRole<HTMLInputElement>('textbox', { name: 'Title' })
+    const selector = screen.getByRole<HTMLSelectElement>('combobox', { name: 'Character' })
+    const addItem = screen.getByRole<HTMLButtonElement>('button', { name: 'Add item' })
+    fireEvent.change(title, { target: { value: 'Keep my draft' } })
+    const retry = screen.getByRole<HTMLButtonElement>('button', { name: 'Retry' })
+    expect(retry.type).toBe('button')
+    expect(retry.form).toBe(addItem.form)
+    expect(retry.form).not.toBeNull()
+    expect(addItem.disabled).toBe(true)
+    fireEvent.click(retry)
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock.mock.calls[1][0]).toBe('https://rickandmortyapi.com/graphql')
+    expect(fetchMock.mock.calls[1][1]?.method).toBe('POST')
+    expect(screen.getByRole('status').textContent).toMatch(/loading characters/i)
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(selector.disabled).toBe(true)
+    expect(addItem.disabled).toBe(true)
+    expect(title.value).toBe('Keep my draft')
+    for (const name of ['To Do', 'Doing', 'Done']) {
+      const column = within(screen.getByRole('region', { name }))
+      expect(column.getByText('No items yet.')).toBeTruthy()
+      expect(column.queryByText('Keep my draft')).toBeNull()
+    }
+
+    await act(async () => {
+      resolveRetry(new Response(JSON.stringify({
+        data: { characters: { results: [{ id: '72', name: 'Birdperson' }] } },
+      }), { status: 200 }))
+    })
+
+    expect(selector.disabled).toBe(false)
+    expect(within(selector).getByRole<HTMLOptionElement>('option', { name: 'Birdperson' }).value).toBe('72')
+    expect(screen.queryByText(/loading characters/i)).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
+    expect(title.value).toBe('Keep my draft')
+    fireEvent.change(selector, { target: { value: '72' } })
+    expect(addItem.disabled).toBe(false)
+    fireEvent.click(addItem)
+    const toDo = within(screen.getByRole('region', { name: 'To Do' }))
+    expect(toDo.getAllByText('Keep my draft')).toHaveLength(1)
+    expect(toDo.getAllByText('Birdperson')).toHaveLength(1)
+  })
+
+  it('offers another retry when the retried request also fails', async () => {
+    fetchMock.mockRejectedValueOnce(new Error('Offline'))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ errors: [{ message: 'Unavailable' }] }), { status: 200 }))
+    render(<App />)
+    await screen.findByRole('alert')
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+
+    expect((await screen.findByRole('alert')).textContent).toMatch(/could not load characters/i)
+    const retry = screen.getByRole<HTMLButtonElement>('button', { name: 'Retry' })
+    expect(retry.disabled).toBe(false)
+    expect(screen.getByRole<HTMLSelectElement>('combobox', { name: 'Character' }).disabled).toBe(true)
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Add item' }).disabled).toBe(true)
+    fireEvent.click(retry)
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(screen.getByRole('status').textContent).toMatch(/loading characters/i)
+  })
+
+  it('allows recovery from an empty result while keeping creation disabled until selection', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ data: { characters: { results: [] } } }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        data: { characters: { results: [{ id: '41', name: 'Beth Smith' }] } },
+      }), { status: 200 }))
+    render(<App />)
+    expect(await screen.findByText('No characters available.')).toBeTruthy()
+    expect(screen.getByRole<HTMLSelectElement>('combobox', { name: 'Character' }).disabled).toBe(true)
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Add item' }).disabled).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+
+    expect(await screen.findByRole('option', { name: 'Beth Smith' })).toBeTruthy()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(screen.queryByText('No characters available.')).toBeNull()
+    expect(screen.getByRole<HTMLSelectElement>('combobox', { name: 'Character' }).disabled).toBe(false)
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Add item' }).disabled).toBe(true)
+  })
+})

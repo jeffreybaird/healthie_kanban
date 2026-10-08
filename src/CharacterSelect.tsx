@@ -16,6 +16,7 @@ export default function CharacterSelect({ value, onChange }: {
 }) {
   const id = useId()
   const [state, setState] = useState<LoadState>({ status: 'loading' })
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -45,9 +46,15 @@ export default function CharacterSelect({ value, onChange }: {
 
     void loadCharacters()
     return () => controller.abort()
-  }, [])
+  }, [attempt])
 
   const characters = state.status === 'ready' ? state.characters : []
+
+  function retry() {
+    onChange(null)
+    setState({ status: 'loading' })
+    setAttempt(previous => previous + 1)
+  }
 
   return (
     <div className="character-field">
@@ -67,6 +74,9 @@ export default function CharacterSelect({ value, onChange }: {
       {state.status === 'error' && <p id={`${id}-feedback`} role="alert">Could not load characters.</p>}
       {state.status === 'ready' && characters.length === 0 && (
         <p id={`${id}-feedback`} role="status">No characters available.</p>
+      )}
+      {(state.status === 'error' || (state.status === 'ready' && characters.length === 0)) && (
+        <button type="button" className="retry-button" onClick={retry}>Retry</button>
       )}
     </div>
   )
