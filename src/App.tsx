@@ -1,8 +1,14 @@
-import { useRef, useState, type FormEvent } from 'react'
+import { useRef, useState, type DragEvent, type FormEvent } from 'react'
 import CharacterSelect, { type Character } from './CharacterSelect'
 
 type ColumnId = 'to-do' | 'doing' | 'done'
 type Item = { id: number; title: string; character: Character; columnId: ColumnId }
+type Placement = 'before' | 'after'
+
+function dropPlacement(event: DragEvent<HTMLLIElement>): Placement {
+  const bounds = event.currentTarget.getBoundingClientRect()
+  return event.clientY < bounds.top + bounds.height / 2 ? 'before' : 'after'
+}
 
 const columns: { id: ColumnId; title: string }[] = [
   { id: 'to-do', title: 'To Do' },
@@ -16,6 +22,7 @@ export default function App() {
   const [items, setItems] = useState<Item[]>([])
   const nextItemId = useRef(1)
   const draggedItemId = useRef<number | null>(null)
+  const [insertion, setInsertion] = useState<{ itemId: number; placement: Placement } | null>(null)
 
   function addItem(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -28,15 +35,22 @@ export default function App() {
     setCharacter(null)
   }
 
-  function moveItem(columnId: ColumnId) {
+  function moveItem(columnId: ColumnId, targetId?: number, placement?: Placement) {
     const itemId = draggedItemId.current
     draggedItemId.current = null
+    setInsertion(null)
     if (itemId === null) return
 
     setItems(previous => {
       const item = previous.find(candidate => candidate.id === itemId)
-      if (!item || item.columnId === columnId) return previous
-      return [...previous.filter(candidate => candidate.id !== itemId), { ...item, columnId }]
+      if (!item) return previous
+      const remaining = previous.filter(candidate => candidate.id !== itemId)
+      if (item.columnId !== columnId) return [...remaining, { ...item, columnId }]
+      if (targetId === undefined || targetId === itemId) return previous
+      const targetIndex = remaining.findIndex(candidate => candidate.id === targetId && candidate.columnId === columnId)
+      if (targetIndex === -1) return previous
+      const insertIndex = targetIndex + (placement === 'after' ? 1 : 0)
+      return [...remaining.slice(0, insertIndex), item, ...remaining.slice(insertIndex)]
     })
   }
 
@@ -75,6 +89,7 @@ export default function App() {
               if (draggedItemId.current === null) return
               event.preventDefault()
               event.dataTransfer.dropEffect = 'move'
+              setInsertion(null)
             }}
             onDrop={event => {
               if (draggedItemId.current === null) return
@@ -90,12 +105,34 @@ export default function App() {
                     className="item-card"
                     key={item.id}
                     draggable
+                    data-insertion={insertion?.itemId === item.id ? insertion.placement : undefined}
                     onDragStart={event => {
                       draggedItemId.current = item.id
+                      setInsertion(null)
                       event.dataTransfer.effectAllowed = 'move'
                       event.dataTransfer.setData('text/plain', String(item.id))
                     }}
-                    onDragEnd={() => { draggedItemId.current = null }}
+                    onDragOver={event => {
+                      const source = items.find(candidate => candidate.id === draggedItemId.current)
+                      if (!source || source.id === item.id || source.columnId !== item.columnId) return
+                      event.preventDefault()
+                      event.stopPropagation()
+                      event.dataTransfer.dropEffect = 'move'
+                      setInsertion({ itemId: item.id, placement: dropPlacement(event) })
+                    }}
+                    onDragLeave={event => {
+                      if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setInsertion(null)
+                    }}
+                    onDrop={event => {
+                      if (draggedItemId.current === null) return
+                      event.preventDefault()
+                      event.stopPropagation()
+                      moveItem(column.id, item.id, dropPlacement(event))
+                    }}
+                    onDragEnd={() => {
+                      draggedItemId.current = null
+                      setInsertion(null)
+                    }}
                   >
                     <h3>{item.title}</h3>
                     <p>{item.character.name}</p>
