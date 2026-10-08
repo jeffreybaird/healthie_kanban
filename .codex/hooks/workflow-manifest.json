@@ -1,0 +1,32 @@
+{
+  "installer": {
+    "source_commit": "3e96ba543e384251df85a40f5087efc2b600ec08a1b62c4386a3b4ea1ac0058e",
+    "version": "0.4.0"
+  },
+  "sha256": {
+    ".claude/agents/workflow-implementer.md": "9c33b96bf9455afa108765a1f9d350bfd46c0788d5e2e861be1034d1e609d38d",
+    ".claude/agents/workflow-orchestrator.md": "3a42c158009bcf941da1f98c034f0e8de71e81d40b81307ccdb7b2766c373e02",
+    ".claude/agents/workflow-reviewer.md": "00109df7a115a94b6309908dd724c94799daf3cd0dc3980c80a3890775ae1e52",
+    ".claude/agents/workflow-runner.md": "4222db9445213a2904f98bfbc05adda1cd62ae8a1b32c0857cee6d948a8eac8f",
+    ".claude/agents/workflow-spec-writer.md": "18fc29290a20f7226c7802e71a4a2ae1d50baae4569a4562d91cb26556e14e69",
+    ".claude/hooks/policy.json": "21e727e8de9db4b8b53b5e7bd8c179cf5990421e02fa6a3a57ab95d60a092fc5",
+    ".claude/hooks/workflow_audit.py": "5474b963a35b168980a8fdbf47d2438d3d1a160b53c78f8dc9190e83e2d3abb7",
+    ".claude/hooks/workflow_guard.py": "65994a7959d9cfd06a7ba5114706fcae8316914cd8b1e950aafd529b1a747807",
+    ".claude/settings.json": "4a5fb7e3ae21b1937277c756943280bd319b79854d895257dd2fde06fb982f44",
+    ".codex/agents/workflow_implementer.toml": "39bf6c47a9602dcaae84b820427d5ed8de1c5b18f9c9aa4fd6cfb950e7804d0c",
+    ".codex/agents/workflow_orchestrator.toml": "a54b1cd4555ef1c141b8bf7a6228a41b56c8e3ea42a7081e1fda6d8a568aa561",
+    ".codex/agents/workflow_reviewer.toml": "15d29b2682029726e7e12e90470c3bd4e939f7cd6cc92fdef45b1c5393fee03e",
+    ".codex/agents/workflow_runner.toml": "33dc52779943238a061732b82a33ef95fcd0d96c7e7a6935768b4a4d19a244b0",
+    ".codex/agents/workflow_spec_writer.toml": "7a50fb0268225412edc602479d5fe64fe3cfb3aa156c991cf13030be62917b65",
+    ".codex/config.toml": "48ad6a21fc22f83dee228c346601ad47486da4062d40069853f38b55ffdac5b7",
+    ".codex/hooks.json": "3ad011d24b6d108abd2d053ceb268588f4c18dde226a2fc6d996cc0197a7d54c",
+    ".codex/hooks/policy.json": "21e727e8de9db4b8b53b5e7bd8c179cf5990421e02fa6a3a57ab95d60a092fc5",
+    ".codex/hooks/workflow_audit.py": "5474b963a35b168980a8fdbf47d2438d3d1a160b53c78f8dc9190e83e2d3abb7",
+    ".codex/hooks/workflow_guard.py": "65994a7959d9cfd06a7ba5114706fcae8316914cd8b1e950aafd529b1a747807",
+    ".docs/agent-workflow.md": "d1aa39e44c1671c50cfb8c790f2c3a4e82043e5d6a3a43a987abef82f74e779d",
+    ".gitattributes": "2292927f73ce12c647a5f03fc0fc1b5847709bc1dfd5ec1493bbde4dddd6f326",
+    "AGENTS.md": "74b075cb291b618c9eb2ceb57a130172652dce032392443dcd24863e360719f3",
+    "CLAUDE.md": "83d812ae2df96e91c1c130eb944499aa2c0c4f630cbcccdb79c50dc6343fdc7d"
+  },
+  "version": "2.0.0"
+}

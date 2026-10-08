@@ -1,0 +1,42 @@
+{
+  "schema_version": 2,
+  "source_globs": [
+    "*.sh",
+    "**/*.sh",
+    "*.py",
+    "**/*.py",
+    ".github/workflows/*.yml",
+    ".gitea/workflows/*.yml",
+    "*.ts",
+    "**/*.ts",
+    "*.tsx",
+    "**/*.tsx",
+    "*.js",
+    "**/*.js",
+    "*.jsx",
+    "**/*.jsx",
+    "*.css",
+    "**/*.css",
+    "*.html",
+    "**/*.html",
+    "package.json",
+    "package-lock.json",
+    "tsconfig*.json"
+  ],
+  "test_globs": [
+    "test/**",
+    "tests/**",
+    "spec/**",
+    "**/*_test.py",
+    "**/*_test.exs",
+    "**/*_spec.rb",
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "**/*.test.js",
+    "**/*.spec.js",
+    "**/*.test.tsx",
+    "**/*.spec.tsx",
+    "**/*.test.jsx",
+    "**/*.spec.jsx"
+  ]
+}

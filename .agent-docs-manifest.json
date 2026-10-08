@@ -1,0 +1,140 @@
+{
+  "app_type": "service",
+  "files": {
+    ".claude/agents/workflow-implementer.md": "9c33b96bf9455afa108765a1f9d350bfd46c0788d5e2e861be1034d1e609d38d",
+    ".claude/agents/workflow-orchestrator.md": "3a42c158009bcf941da1f98c034f0e8de71e81d40b81307ccdb7b2766c373e02",
+    ".claude/agents/workflow-reviewer.md": "00109df7a115a94b6309908dd724c94799daf3cd0dc3980c80a3890775ae1e52",
+    ".claude/agents/workflow-runner.md": "4222db9445213a2904f98bfbc05adda1cd62ae8a1b32c0857cee6d948a8eac8f",
+    ".claude/agents/workflow-spec-writer.md": "18fc29290a20f7226c7802e71a4a2ae1d50baae4569a4562d91cb26556e14e69",
+    ".claude/hooks/policy.json": "21e727e8de9db4b8b53b5e7bd8c179cf5990421e02fa6a3a57ab95d60a092fc5",
+    ".claude/hooks/workflow_audit.py": "5474b963a35b168980a8fdbf47d2438d3d1a160b53c78f8dc9190e83e2d3abb7",
+    ".claude/hooks/workflow_guard.py": "65994a7959d9cfd06a7ba5114706fcae8316914cd8b1e950aafd529b1a747807",
+    ".claude/react.md": "b7e8b2c6271f825881c13e21011cb22272c0746f9083c9e3036bb355c31d91c0",
+    ".claude/settings.json": "dc6f283ece9fb5daff71c56d322910d8def1eab0531430c07f6ed0cae3bf78bf",
+    ".codex/agents/workflow_implementer.toml": "39bf6c47a9602dcaae84b820427d5ed8de1c5b18f9c9aa4fd6cfb950e7804d0c",
+    ".codex/agents/workflow_orchestrator.toml": "a54b1cd4555ef1c141b8bf7a6228a41b56c8e3ea42a7081e1fda6d8a568aa561",
+    ".codex/agents/workflow_reviewer.toml": "15d29b2682029726e7e12e90470c3bd4e939f7cd6cc92fdef45b1c5393fee03e",
+    ".codex/agents/workflow_runner.toml": "33dc52779943238a061732b82a33ef95fcd0d96c7e7a6935768b4a4d19a244b0",
+    ".codex/agents/workflow_spec_writer.toml": "7a50fb0268225412edc602479d5fe64fe3cfb3aa156c991cf13030be62917b65",
+    ".codex/config.toml": "833f696460f50ed15147686f0fcff0c7c8e5270472c044e5e2db69aeddae7d2a",
+    ".codex/hooks.json": "43f9f90ed4d73e785300a14d0ed43a90ae7b77d86ac8ccdc136bec72bf279f3e",
+    ".codex/hooks/policy.json": "21e727e8de9db4b8b53b5e7bd8c179cf5990421e02fa6a3a57ab95d60a092fc5",
+    ".codex/hooks/workflow-manifest.json": "3910c0057c1e2a10f3e89732629505f2a55b194ec8661c7f0803b3aed0a798bb",
+    ".codex/hooks/workflow_audit.py": "5474b963a35b168980a8fdbf47d2438d3d1a160b53c78f8dc9190e83e2d3abb7",
+    ".codex/hooks/workflow_guard.py": "65994a7959d9cfd06a7ba5114706fcae8316914cd8b1e950aafd529b1a747807",
+    ".docs/agent-workflow.md": "d1aa39e44c1671c50cfb8c790f2c3a4e82043e5d6a3a43a987abef82f74e779d",
+    ".gitattributes": "2d989683e692720406585d20a6dce708fb3d00eed3068be8936cca35bfe1e2d2",
+    "AGENTS.md": "b392ae1ff82d3e352ac4f5dbe75bad44828cfcd5119431b23b4f2fc3d645666d",
+    "CLAUDE.md": "46f9ed1928d38f9fedf276ebb7cf030d51636b9a45b400558006cc835e7c7ee7",
+    "doc/react.md": "b7e8b2c6271f825881c13e21011cb22272c0746f9083c9e3036bb355c31d91c0"
+  },
+  "framework": "react",
+  "installer": {
+    "source_commit": "3e96ba543e384251df85a40f5087efc2b600ec08a1b62c4386a3b4ea1ac0058e",
+    "version": "0.4.0"
+  },
+  "names": {
+    "app": "healthie_kanban",
+    "module": "healthie_kanban"
+  },
+  "owned_hooks": {
+    ".claude/settings.json": {
+      "PostToolUse": [
+        {
+          "hooks": [
+            {
+              "command": "python3 -B \"$CLAUDE_PROJECT_DIR/.claude/hooks/workflow_audit.py\" --root \"$CLAUDE_PROJECT_DIR\" --policy \"$CLAUDE_PROJECT_DIR/.claude/hooks/policy.json\"",
+              "timeout": 10,
+              "type": "command"
+            }
+          ],
+          "matcher": "Bash|Write|Edit|NotebookEdit"
+        }
+      ],
+      "PostToolUseFailure": [
+        {
+          "hooks": [
+            {
+              "command": "python3 -B \"$CLAUDE_PROJECT_DIR/.claude/hooks/workflow_audit.py\" --root \"$CLAUDE_PROJECT_DIR\" --policy \"$CLAUDE_PROJECT_DIR/.claude/hooks/policy.json\"",
+              "timeout": 10,
+              "type": "command"
+            }
+          ],
+          "matcher": "Bash|Write|Edit|NotebookEdit"
+        }
+      ],
+      "PreToolUse": [
+        {
+          "hooks": [
+            {
+              "command": "python3 -B \"$CLAUDE_PROJECT_DIR/.claude/hooks/workflow_guard.py\" --platform claude --root \"$CLAUDE_PROJECT_DIR\" --policy \"$CLAUDE_PROJECT_DIR/.claude/hooks/policy.json\"",
+              "timeout": 5,
+              "type": "command"
+            }
+          ],
+          "matcher": "Write|Edit|NotebookEdit"
+        },
+        {
+          "hooks": [
+            {
+              "command": "python3 -B \"$CLAUDE_PROJECT_DIR/.claude/hooks/workflow_audit.py\" --root \"$CLAUDE_PROJECT_DIR\" --policy \"$CLAUDE_PROJECT_DIR/.claude/hooks/policy.json\"",
+              "timeout": 10,
+              "type": "command"
+            }
+          ],
+          "matcher": "Bash|Write|Edit|NotebookEdit"
+        }
+      ]
+    },
+    ".codex/hooks.json": {
+      "PostToolUse": [
+        {
+          "hooks": [
+            {
+              "command": "python3 -B \"$(git rev-parse --show-toplevel)/.codex/hooks/workflow_audit.py\" --platform codex --root \"$(git rev-parse --show-toplevel)\" --policy \"$(git rev-parse --show-toplevel)/.codex/hooks/policy.json\"",
+              "timeout": 10,
+              "type": "command"
+            }
+          ],
+          "matcher": "^(Bash|apply_patch)$"
+        }
+      ],
+      "PreToolUse": [
+        {
+          "hooks": [
+            {
+              "command": "python3 -B \"$(git rev-parse --show-toplevel)/.codex/hooks/workflow_guard.py\" --platform codex --root \"$(git rev-parse --show-toplevel)\" --policy \"$(git rev-parse --show-toplevel)/.codex/hooks/policy.json\"",
+              "timeout": 5,
+              "type": "command"
+            }
+          ],
+          "matcher": ".*"
+        },
+        {
+          "hooks": [
+            {
+              "command": "python3 -B \"$(git rev-parse --show-toplevel)/.codex/hooks/workflow_audit.py\" --platform codex --root \"$(git rev-parse --show-toplevel)\" --policy \"$(git rev-parse --show-toplevel)/.codex/hooks/policy.json\"",
+              "timeout": 10,
+              "type": "command"
+            }
+          ],
+          "matcher": "^(Bash|apply_patch)$"
+        }
+      ]
+    }
+  },
+  "schema_version": 1,
+  "selection": {
+    "hook": "",
+    "no_setup": false,
+    "skip_agents": [],
+    "skip_modules": []
+  },
+  "template_files": [
+    ".claude/react.md",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "doc/react.md"
+  ],
+  "template_hooks": {}
+}
