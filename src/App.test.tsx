@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, cleanup, createEvent, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 
@@ -49,6 +49,25 @@ function moveCard(title: string, destination: string) {
   expect(fireEvent.dragOver(boardColumn(destination), { dataTransfer })).toBe(false)
   fireEvent.drop(boardColumn(destination), { dataTransfer })
   fireEvent.dragEnd(card, { dataTransfer })
+}
+
+function dropOnCard(sourceTitle: string, targetTitle: string, half: 'before' | 'after') {
+  const source = boardCard(sourceTitle)
+  const target = boardCard(targetTitle)
+  const bounds = vi.spyOn(target, 'getBoundingClientRect').mockReturnValue({
+    x: 0, y: 100, top: 100, bottom: 200, left: 0, right: 300, width: 300, height: 100,
+    toJSON: () => ({}),
+  })
+  const dataTransfer = dragData()
+  fireEvent.dragStart(source, { dataTransfer })
+  const dragOver = createEvent.dragOver(target, { dataTransfer })
+  Object.defineProperty(dragOver, 'clientY', { value: half === 'before' ? 125 : 175 })
+  expect(fireEvent(target, dragOver)).toBe(false)
+  const drop = createEvent.drop(target, { dataTransfer })
+  Object.defineProperty(drop, 'clientY', { value: half === 'before' ? 125 : 175 })
+  fireEvent(target, drop)
+  fireEvent.dragEnd(source, { dataTransfer })
+  bounds.mockRestore()
 }
 
 beforeEach(() => {
@@ -415,6 +434,66 @@ describe('Moving items between columns', () => {
     expect(columnTitles('To Do')).toEqual(['Review intake', 'Prepare visit', 'Send reminder'])
     expect(columnTitles('Doing')).toEqual([])
     expect(columnTitles('Done')).toEqual([])
+    expect(screen.getAllByRole('listitem')).toHaveLength(3)
+  })
+})
+
+describe('Reordering items within columns', () => {
+  it.each([
+    ['Review intake', 'Send reminder', 'after', ['Prepare visit', 'Send reminder', 'Review intake']],
+    ['Send reminder', 'Review intake', 'before', ['Send reminder', 'Review intake', 'Prepare visit']],
+    ['Prepare visit', 'Send reminder', 'after', ['Review intake', 'Send reminder', 'Prepare visit']],
+    ['Prepare visit', 'Review intake', 'before', ['Prepare visit', 'Review intake', 'Send reminder']],
+  ] as const)('places %s %s (%s target half) without losing cards', async (source, target, half, expected) => {
+    await renderBoardWithItems()
+    dropOnCard(source, target, half)
+
+    expect(columnTitles('To Do')).toEqual(expected)
+    expect(screen.getAllByRole('listitem')).toHaveLength(3)
+    expect(within(boardCard('Review intake')).getByText('Beth Smith')).toBeTruthy()
+    expect(within(boardCard('Prepare visit')).getByText('Birdperson')).toBeTruthy()
+    expect(within(boardCard('Send reminder')).getByText('Beth Smith')).toBeTruthy()
+    expect(columnTitles('Doing')).toEqual([])
+    expect(columnTitles('Done')).toEqual([])
+  })
+
+  it.each(['Doing', 'Done'])('reorders in %s without changing a populated neighboring column', async destination => {
+    await renderBoardWithItems()
+    moveCard('Review intake', destination)
+    moveCard('Prepare visit', destination)
+    dropOnCard('Prepare visit', 'Review intake', 'before')
+
+    expect(columnTitles(destination)).toEqual(['Prepare visit', 'Review intake'])
+    expect(columnTitles('To Do')).toEqual(['Send reminder'])
+    expect(screen.getAllByRole('listitem')).toHaveLength(3)
+    expect(within(boardCard('Prepare visit')).getByText('Birdperson')).toBeTruthy()
+    expect(within(boardCard('Review intake')).getByText('Beth Smith')).toBeTruthy()
+  })
+
+  it('keeps order on self-drop or when a drag over another card is canceled', async () => {
+    await renderBoardWithItems()
+    dropOnCard('Prepare visit', 'Prepare visit', 'after')
+    expect(columnTitles('To Do')).toEqual(['Review intake', 'Prepare visit', 'Send reminder'])
+
+    const source = boardCard('Review intake')
+    const target = boardCard('Send reminder')
+    const dataTransfer = dragData()
+    fireEvent.dragStart(source, { dataTransfer })
+    const dragOver = createEvent.dragOver(target, { dataTransfer })
+    Object.defineProperty(dragOver, 'clientY', { value: 175 })
+    fireEvent(target, dragOver)
+    fireEvent.dragEnd(source, { dataTransfer })
+    expect(columnTitles('To Do')).toEqual(['Review intake', 'Prepare visit', 'Send reminder'])
+  })
+
+  it('still appends cross-column drops even when targeting the top half of an existing card', async () => {
+    await renderBoardWithItems()
+    moveCard('Send reminder', 'Doing')
+    dropOnCard('Send reminder', 'Review intake', 'before')
+
+    expect(columnTitles('To Do')).toEqual(['Review intake', 'Prepare visit', 'Send reminder'])
+    expect(columnTitles('Doing')).toEqual([])
+    expect(within(boardColumn('Doing')).getByText('No items yet.')).toBeTruthy()
     expect(screen.getAllByRole('listitem')).toHaveLength(3)
   })
 })
