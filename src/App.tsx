@@ -1,3 +1,6 @@
+import { useState } from 'react'
+import CharacterSelect from './CharacterSelect'
+
 const columns = [
   { id: 'to-do', title: 'To Do' },
   { id: 'doing', title: 'Doing' },
@@ -5,6 +8,8 @@ const columns = [
 ]
 
 export default function App() {
+  const [characterId, setCharacterId] = useState('')
+
   return (
     <main>
       <header className="board-header">
@@ -12,6 +17,7 @@ export default function App() {
         <h1>Kanban board</h1>
         <p>See your work from start to finish.</p>
       </header>
+      <CharacterSelect value={characterId} onChange={setCharacterId} />
       <div className="board">
         {columns.map(column => (
           <section className="column" key={column.id} aria-labelledby={`${column.id}-heading`}>
