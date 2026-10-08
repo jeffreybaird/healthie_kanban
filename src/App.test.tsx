@@ -101,3 +101,116 @@ describe('Character selection', () => {
     expect(screen.queryByText(/loading characters/i)).toBeNull()
   })
 })
+
+describe('Item creation', () => {
+  async function renderWithCharacters() {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({
+      data: { characters: { results: [{ id: '41', name: 'Beth Smith' }, { id: '72', name: 'Birdperson' }] } },
+    }), { status: 200 }))
+    render(<App />)
+    await screen.findByRole('option', { name: 'Beth Smith' })
+  }
+
+  function titleInput() {
+    return screen.getByRole<HTMLInputElement>('textbox', { name: 'Title' })
+  }
+
+  function characterSelect() {
+    return screen.getByRole<HTMLSelectElement>('combobox', { name: 'Character' })
+  }
+
+  function submitForm() {
+    const button = screen.getByRole<HTMLButtonElement>('button', { name: 'Add item' })
+    expect(button.type).toBe('submit')
+    expect(button.form).not.toBeNull()
+    expect(titleInput().form).toBe(button.form)
+    expect(characterSelect().form).toBe(button.form)
+    // Exercise the form submission path shared by clicking submit and pressing Enter.
+    fireEvent.submit(button.form!)
+  }
+
+  function expectEmptyBoard() {
+    for (const name of ['To Do', 'Doing', 'Done']) {
+      expect(within(screen.getByRole('region', { name })).getByText('No items yet.')).toBeTruthy()
+    }
+  }
+
+  it('creates one assigned item in To Do using a trimmed title and resets the form', async () => {
+    await renderWithCharacters()
+    fireEvent.change(titleInput(), { target: { value: '  Schedule follow-up  ' } })
+    fireEvent.change(characterSelect(), { target: { value: '41' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add item' }))
+
+    const toDo = within(screen.getByRole('region', { name: 'To Do' }))
+    expect(toDo.getAllByText('Schedule follow-up', { normalizer: text => text })).toHaveLength(1)
+    expect(toDo.getAllByText('Beth Smith')).toHaveLength(1)
+    expect(toDo.queryByText('Birdperson')).toBeNull()
+    expect(toDo.queryByText('No items yet.')).toBeNull()
+    for (const name of ['Doing', 'Done']) {
+      const column = within(screen.getByRole('region', { name }))
+      expect(column.getByText('No items yet.')).toBeTruthy()
+      expect(column.queryByText('Schedule follow-up')).toBeNull()
+      expect(column.queryByText('Beth Smith')).toBeNull()
+    }
+    expect(titleInput().value).toBe('')
+    expect(characterSelect().value).toBe('')
+  })
+
+  it('submits through the form and preserves previous items and their assignments', async () => {
+    await renderWithCharacters()
+    fireEvent.change(titleInput(), { target: { value: 'Review intake' } })
+    fireEvent.change(characterSelect(), { target: { value: '41' } })
+    submitForm()
+
+    const toDo = within(screen.getByRole('region', { name: 'To Do' }))
+    expect(toDo.getAllByText('Review intake')).toHaveLength(1)
+    expect(toDo.getAllByText('Beth Smith')).toHaveLength(1)
+    expect(titleInput().value).toBe('')
+    expect(characterSelect().value).toBe('')
+
+    fireEvent.change(titleInput(), { target: { value: 'Prepare visit' } })
+    fireEvent.change(characterSelect(), { target: { value: '72' } })
+    submitForm()
+
+    for (const text of ['Review intake', 'Beth Smith', 'Prepare visit', 'Birdperson']) {
+      expect(toDo.getAllByText(text)).toHaveLength(1)
+    }
+    expect(titleInput().value).toBe('')
+    expect(characterSelect().value).toBe('')
+  })
+
+  it.each(['', '   \t  '])('rejects an empty or whitespace-only title (%j)', async title => {
+    await renderWithCharacters()
+    fireEvent.change(titleInput(), { target: { value: title } })
+    fireEvent.change(characterSelect(), { target: { value: '41' } })
+    submitForm()
+
+    expectEmptyBoard()
+    expect(within(screen.getByRole('region', { name: 'To Do' })).queryByText('Beth Smith')).toBeNull()
+  })
+
+  it('rejects a title without a selected character', async () => {
+    await renderWithCharacters()
+    fireEvent.change(titleInput(), { target: { value: 'Needs an assignee' } })
+    submitForm()
+
+    expectEmptyBoard()
+    expect(within(screen.getByRole('region', { name: 'To Do' })).queryByText('Needs an assignee')).toBeNull()
+  })
+
+  it.each(['loading', 'error', 'empty'])('cannot create an item while characters are %s', async state => {
+    if (state === 'error') fetchMock.mockResolvedValue(new Response('{}', { status: 503 }))
+    if (state === 'empty') {
+      fetchMock.mockResolvedValue(new Response(JSON.stringify({ data: { characters: { results: [] } } }), { status: 200 }))
+    }
+    render(<App />)
+    if (state === 'error') await screen.findByRole('alert')
+    if (state === 'empty') await screen.findByText('No characters available.')
+
+    fireEvent.change(titleInput(), { target: { value: 'Unavailable assignment' } })
+    submitForm()
+
+    expectEmptyBoard()
+    expect(within(screen.getByRole('region', { name: 'To Do' })).queryByText('Unavailable assignment')).toBeNull()
+  })
+})
