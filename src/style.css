@@ -43,6 +43,8 @@ p { line-height: 1.6; }
 .item-form .retry-button { margin-top: .5rem; padding: .5rem 1rem; }
 .item-list { display: grid; gap: .75rem; padding: 0; margin: 0; list-style: none; }
 .item-card { padding: 1rem; border: 1px solid #d7e2e5; border-radius: .5rem; overflow-wrap: anywhere; }
+.item-card[draggable] { cursor: grab; }
+.item-card[draggable]:active { cursor: grabbing; }
 .item-card h3 { margin: 0; font-size: 1rem; }
 .item-card p { margin: .5rem 0 0; color: #52616b; font-size: .875rem; }
 .board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.25rem; }

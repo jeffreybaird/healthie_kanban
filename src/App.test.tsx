@@ -4,6 +4,53 @@ import App from './App'
 
 const fetchMock = vi.fn<typeof fetch>()
 
+function dragData() {
+  const values = new Map<string, string>()
+  return {
+    effectAllowed: 'all',
+    dropEffect: 'none',
+    setData: (type: string, value: string) => values.set(type, value),
+    getData: (type: string) => values.get(type) ?? '',
+    get types() { return [...values.keys()] },
+  }
+}
+
+async function renderBoardWithItems() {
+  fetchMock.mockResolvedValue(new Response(JSON.stringify({
+    data: { characters: { results: [{ id: '41', name: 'Beth Smith' }, { id: '72', name: 'Birdperson' }] } },
+  }), { status: 200 }))
+  render(<App />)
+  await screen.findByRole('option', { name: 'Beth Smith' })
+  for (const [title, characterId] of [['Review intake', '41'], ['Prepare visit', '72'], ['Send reminder', '41']]) {
+    fireEvent.change(screen.getByRole('textbox', { name: 'Title' }), { target: { value: title } })
+    fireEvent.change(screen.getByRole('combobox', { name: 'Character' }), { target: { value: characterId } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add item' }))
+  }
+}
+
+function boardColumn(name: string) {
+  return screen.getByRole('region', { name })
+}
+
+function boardCard(title: string) {
+  return screen.getAllByRole('listitem').find(card => within(card).queryByRole('heading', { name: title }))!
+}
+
+function columnTitles(name: string) {
+  return within(boardColumn(name)).queryAllByRole('listitem')
+    .map(card => within(card).getByRole('heading').textContent)
+}
+
+function moveCard(title: string, destination: string) {
+  const card = boardCard(title)
+  expect(card.draggable).toBe(true)
+  const dataTransfer = dragData()
+  fireEvent.dragStart(card, { dataTransfer })
+  expect(fireEvent.dragOver(boardColumn(destination), { dataTransfer })).toBe(false)
+  fireEvent.drop(boardColumn(destination), { dataTransfer })
+  fireEvent.dragEnd(card, { dataTransfer })
+}
+
 beforeEach(() => {
   fetchMock.mockReset()
   fetchMock.mockImplementation(() => new Promise<Response>(() => {}))
@@ -300,5 +347,74 @@ describe('Character loading recovery', () => {
     expect(screen.queryByText('No characters available.')).toBeNull()
     expect(screen.getByRole<HTMLSelectElement>('combobox', { name: 'Character' }).disabled).toBe(false)
     expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Add item' }).disabled).toBe(true)
+  })
+})
+
+describe('Moving items between columns', () => {
+  it('moves a card through empty columns and back, preserving its assignment', async () => {
+    await renderBoardWithItems()
+    for (const destination of ['Doing', 'Done', 'To Do']) {
+      moveCard('Review intake', destination)
+      expect(within(boardColumn(destination)).getAllByText('Review intake')).toHaveLength(1)
+      expect(within(boardCard('Review intake')).getByText('Beth Smith')).toBeTruthy()
+      expect(screen.getAllByText('Review intake')).toHaveLength(1)
+      for (const other of ['To Do', 'Doing', 'Done'].filter(name => name !== destination)) {
+        expect(within(boardColumn(other)).queryByText('Review intake')).toBeNull()
+      }
+    }
+    expect(columnTitles('To Do')).toEqual(['Prepare visit', 'Send reminder', 'Review intake'])
+    expect(within(boardColumn('Doing')).getByText('No items yet.')).toBeTruthy()
+    expect(within(boardColumn('Done')).getByText('No items yet.')).toBeTruthy()
+  })
+
+  it('appends to an occupied destination and restores the source empty state', async () => {
+    await renderBoardWithItems()
+    moveCard('Prepare visit', 'Done')
+    moveCard('Review intake', 'Done')
+    moveCard('Send reminder', 'Done')
+
+    expect(columnTitles('Done')).toEqual(['Prepare visit', 'Review intake', 'Send reminder'])
+    expect(within(boardCard('Prepare visit')).getByText('Birdperson')).toBeTruthy()
+    expect(within(boardCard('Review intake')).getByText('Beth Smith')).toBeTruthy()
+    expect(screen.getAllByRole('listitem')).toHaveLength(3)
+    expect(within(boardColumn('To Do')).getByText('No items yet.')).toBeTruthy()
+    expect(within(boardColumn('Done')).queryByText('No items yet.')).toBeNull()
+  })
+
+  it('keeps the board unchanged after an outside drop, cancellation, or same-column drop', async () => {
+    await renderBoardWithItems()
+    const card = boardCard('Review intake')
+    const dataTransfer = dragData()
+    fireEvent.dragStart(card, { dataTransfer })
+    fireEvent.drop(screen.getByRole('heading', { level: 1 }), { dataTransfer })
+    fireEvent.dragEnd(card, { dataTransfer })
+    expect(columnTitles('To Do')).toEqual(['Review intake', 'Prepare visit', 'Send reminder'])
+
+    fireEvent.dragStart(card, { dataTransfer })
+    fireEvent.dragEnd(card, { dataTransfer })
+    expect(columnTitles('To Do')).toEqual(['Review intake', 'Prepare visit', 'Send reminder'])
+    moveCard('Review intake', 'To Do')
+    expect(columnTitles('To Do')).toEqual(['Review intake', 'Prepare visit', 'Send reminder'])
+    expect(columnTitles('Doing')).toEqual([])
+    expect(columnTitles('Done')).toEqual([])
+  })
+
+  it('ignores external data and stale data from a canceled drag', async () => {
+    await renderBoardWithItems()
+    const external = dragData()
+    external.setData('text/plain', 'unknown-item')
+    fireEvent.dragOver(boardColumn('Doing'), { dataTransfer: external })
+    fireEvent.drop(boardColumn('Doing'), { dataTransfer: external })
+
+    const card = boardCard('Review intake')
+    const stale = dragData()
+    fireEvent.dragStart(card, { dataTransfer: stale })
+    fireEvent.dragEnd(card, { dataTransfer: stale })
+    fireEvent.drop(boardColumn('Done'), { dataTransfer: stale })
+
+    expect(columnTitles('To Do')).toEqual(['Review intake', 'Prepare visit', 'Send reminder'])
+    expect(columnTitles('Doing')).toEqual([])
+    expect(columnTitles('Done')).toEqual([])
+    expect(screen.getAllByRole('listitem')).toHaveLength(3)
   })
 })
