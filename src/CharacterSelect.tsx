@@ -1,6 +1,6 @@
 import { useEffect, useId, useState } from 'react'
 
-type Character = { id: string; name: string }
+export type Character = { id: string; name: string }
 type CharacterResponse = {
   data?: { characters?: { results?: (Character | null)[] } }
   errors?: unknown[]
@@ -12,7 +12,7 @@ type LoadState =
 
 export default function CharacterSelect({ value, onChange }: {
   value: string
-  onChange: (characterId: string) => void
+  onChange: (character: Character | null) => void
 }) {
   const id = useId()
   const [state, setState] = useState<LoadState>({ status: 'loading' })
@@ -55,7 +55,8 @@ export default function CharacterSelect({ value, onChange }: {
       <select
         id={id}
         value={value}
-        onChange={event => onChange(event.target.value)}
+        onChange={event => onChange(characters.find(character => character.id === event.target.value) ?? null)}
+        required
         disabled={state.status !== 'ready' || characters.length === 0}
         aria-describedby={state.status !== 'ready' || characters.length === 0 ? `${id}-feedback` : undefined}
       >
