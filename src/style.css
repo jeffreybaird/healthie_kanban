@@ -40,6 +40,7 @@ p { line-height: 1.6; }
 }
 .item-form button:hover:enabled { background: #0b4050; }
 .item-form button:disabled { background: #e9eff1; border-color: #cbd7dc; color: #52616b; cursor: not-allowed; }
+.item-form .retry-button { margin-top: .5rem; padding: .5rem 1rem; }
 .item-list { display: grid; gap: .75rem; padding: 0; margin: 0; list-style: none; }
 .item-card { padding: 1rem; border: 1px solid #d7e2e5; border-radius: .5rem; overflow-wrap: anywhere; }
 .item-card h3 { margin: 0; font-size: 1rem; }
