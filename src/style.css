@@ -13,6 +13,20 @@ p { line-height: 1.6; }
 .board-header { margin-bottom: 2.5rem; }
 .board-header > p:last-child { color: #52616b; margin-bottom: 0; }
 .eyebrow { color: #30616d; font-size: .875rem; font-weight: 600; }
+.character-field { max-width: 24rem; margin-bottom: 2rem; }
+.character-field label { display: block; margin-bottom: .5rem; font-weight: 600; }
+.character-field select {
+  width: 100%;
+  padding: .75rem;
+  border: 1px solid #82929d;
+  border-radius: .5rem;
+  background: #fff;
+  color: #182c3c;
+  font: inherit;
+}
+.character-field select:focus-visible { outline: 3px solid #30616d; outline-offset: 3px; }
+.character-field select:disabled { background: #e9eff1; color: #52616b; }
+.character-field p { margin: .5rem 0 0; color: #52616b; font-size: .875rem; }
 .board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.25rem; }
 .column {
   min-height: 22rem;
