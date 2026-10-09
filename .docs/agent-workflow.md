@@ -17,6 +17,71 @@ an implementation defect. Changes to expected behavior require a test-writer
 revision and renewed reviewer acceptance. New regression tests are permitted.
 Record hashes of accepted tests before implementation and compare afterward.
 
+## Coordination and evidence
+
+By default, use one main orchestrator for a single change and reuse existing
+role agents for revisions and follow-up work. Assign bounded work through the
+pipeline above; add coordination layers only when the task needs them.
+
+Use compact handoffs containing expected behavior, owned paths, relevant
+repository guidance, accepted-test hashes when available, validation commands,
+and evidence paths. Include explicit task context sufficient to do the assigned
+work without reconstructing the conversation. In Codex, use bounded context;
+avoid full-history forks by default. Use a full-history fork only when needed
+for context that cannot be conveyed reliably in the handoff. Follow native
+tool and user rules when selecting context or delegating.
+
+For example, an implementation handoff can be:
+
+> Behavior: reject an expired token, accept a valid token. Own `src/tokens.py`;
+> do not edit tests. Guidance: `.docs/project-guidance.md` and this workflow.
+> Accepted tests: `test/test_tokens.py`, SHA-256 recorded in
+> `/tmp/token-change/accepted.sha256`. Validate: `python3 -m unittest
+> discover -s test`. Red evidence: `/tmp/token-change/red.log`; save green
+> evidence to `/tmp/token-change/green.log`. Report completion, blockers, or
+> material findings with evidence paths.
+
+Return only completion, blockers, and material findings to the coordinator;
+omit routine progress narration and repeated status messages. Preserve full
+evidence in files or artifacts, including commands, output, failures, skips,
+and pending cases. Compact reports are pointers, not substitutes: the
+independent reviewer must read the full evidence and inspect the final diff.
+Retain the existing PR evidence and full quality gates below.
+
+Use event-driven waits for delegated work where supported. After dispatch,
+wait for completion or a material event instead of repeatedly polling unchanged
+status or messaging agents for updates. Respect native tool wait limits and
+user communication rules; answer user status requests and report real blockers
+or material findings promptly. These exceptions do not require routine agent
+status chatter or reduce the saved evidence.
+
+## Pull request test evidence
+
+Every PR description must include relevant Ruby Cucumber or Elixir Cucumberex
+feature/scenario specifications for its changes. Identify feature paths and
+scenario names, and include readable Gherkin, scenario/spec content, or actual
+executed scenario output. Names or links alone are insufficient; a generic
+test-passed summary does not show the behavior covered.
+
+For Ruby, run `bundle exec rspec <relevant spec paths> --format documentation`
+and include the actual command, documentation output and results. Cucumber
+scenario output comes from `bundle exec cucumber --format pretty --strict`.
+For Elixir, run `mix test <relevant test paths> --trace` for focused ExUnit output
+and `MIX_ENV=test mix cucumber --format pretty --strict` for Cucumberex output.
+Use paths relevant to the included changes. Report failures, skipped and pending
+examples honestly. Never fabricate output or claim an unrun check passed. Long
+output may use expandable details blocks while keeping the result visible.
+
+Use `N/A` with an explicit reason for unrelated ecosystems or changes, and
+include the actual relevant checks instead. Mandatory tooling missing from a
+fresh generated project is a defect, not N/A. Fresh Rails and Sinatra projects
+require RSpec and Cucumber; fresh Phoenix, escript and Mix library projects
+require ExUnit and Cucumberex. Do not install an unrelated framework solely to
+produce PR evidence. Existing applications retain their explicit legacy gates
+until their acceptance tooling is adopted; report that limitation honestly.
+Focused evidence does not replace required full quality gates: retain normal
+full RSpec or `mix test` execution and record all required commands and results.
+
 ## Dead-code review
 
 Every PR must include a dead-code review. Check references and dynamic,
@@ -252,12 +317,38 @@ that hooks are trusted or running.
 
 ## Platform setup and activation
 
+### Optional project model profile
+
+An optional project-owned profile at `.docs/agent-models.json` selects native
+main and workflow role models. Its `schema_version` is `1`. The optional
+`codex` and `claude` objects each accept `model` and `roles`; role keys are
+`spec_writer`, `implementer`, `runner`, `reviewer`, and `orchestrator`.
+Each role accepts `model`, plus `model_reasoning_effort` for Codex or `effort`
+for Claude. Model identifiers must be nonblank strings; the host validates
+availability and model-specific effort support. Codex effort values are
+`none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`, `ultra`; Claude
+effort values are `low`, `medium`, `high`, `xhigh`, `max`. Main effort settings
+remain native settings rather than profile fields.
+
+For example: `{"schema_version": 1, "codex": {"model": "gpt-6.1-sol",
+"roles": {"runner": {"model": "gpt-6-luna", "model_reasoning_effort": "low"}}}}`.
+
+Preview and apply through the maintained updater. The profile is never
+generated, rewritten, or included in generated manifests. Invalid profiles
+and unsafe filesystem paths block writes. Without a profile, native main
+settings are preserved and generated roles inherit. Removing a main model
+from the profile preserves the current native main model; change that native
+setting explicitly to change the selection. Removing a role override restores
+inheritance for that field at the next update. Hooks, policy, and role
+instruction bodies are unchanged by model selection.
+
 Codex definitions are in .codex/agents and its hook registration is in
 .codex/hooks.json. Review exact new definitions through /hooks when required.
 Claude definitions are in .claude/agents and its registration is in
 .claude/settings.json. This setup adds no Claude tool allowlists, broad Edit
 denials or sandbox overrides. Existing unrelated native settings and hooks are
-preserved. No model is selected. Codex roles are workflow_spec_writer,
+preserved. No model is selected by default; the optional profile above makes
+explicit project selections. Codex roles are workflow_spec_writer,
 workflow_implementer, workflow_runner, workflow_reviewer and
 workflow_orchestrator; Claude role names use hyphens.
 
