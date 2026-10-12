@@ -187,7 +187,8 @@ p { line-height: 1.6; }
 }
 @media (prefers-reduced-motion: reduce) {
   .portal, .arrival-portal { display: none; }
-  .portal-ring, .item-card[data-arriving="true"], .card-portrait,
+  .portal-ring, .item-card[data-arriving="true"],
+  .item-card[data-arriving="true"] .card-portrait,
   .celebration-message { animation: none; }
 }
 @media (max-width: 640px) {
