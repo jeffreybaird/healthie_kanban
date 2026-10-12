@@ -497,3 +497,151 @@ describe('Reordering items within columns', () => {
     expect(screen.getAllByRole('listitem')).toHaveLength(3)
   })
 })
+
+describe('Done celebration', () => {
+  let prefersReducedMotion = false
+
+  function celebrations() {
+    return screen.queryAllByRole('status')
+  }
+
+  function confettiPieces() {
+    return screen.queryAllByTestId('confetti-piece')
+  }
+
+  function expectNoCelebration() {
+    expect(celebrations()).toHaveLength(0)
+    expect(confettiPieces()).toHaveLength(0)
+  }
+
+  function expectCelebrationFor(title: string) {
+    const statuses = celebrations()
+    expect(statuses).toHaveLength(1)
+    expect(statuses[0].textContent).toMatch(new RegExp(title))
+    expect(statuses[0].textContent).toMatch(/done/i)
+  }
+
+  function expectConfetti() {
+    const pieces = confettiPieces()
+    expect(pieces.length).toBeGreaterThanOrEqual(12)
+    for (const piece of pieces) {
+      expect(piece.closest('[aria-hidden="true"]')).not.toBeNull()
+    }
+  }
+
+  function advance(ms: number) {
+    act(() => { vi.advanceTimersByTime(ms) })
+  }
+
+  beforeEach(() => {
+    prefersReducedMotion = false
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
+      matches: prefersReducedMotion && /prefers-reduced-motion:\s*reduce/.test(query),
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(() => false),
+    })))
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('celebrates a card moved into Done with a status naming the item and decorative confetti', async () => {
+    await renderBoardWithItems()
+    expectNoCelebration()
+
+    moveCard('Review intake', 'Done')
+
+    expectCelebrationFor('Review intake')
+    expectConfetti()
+    expect(columnTitles('Done')).toEqual(['Review intake'])
+    expect(columnTitles('To Do')).toEqual(['Prepare visit', 'Send reminder'])
+    expect(columnTitles('Doing')).toEqual([])
+    expect(screen.getAllByRole('listitem')).toHaveLength(3)
+    expect(within(boardCard('Review intake')).getByText('Beth Smith')).toBeTruthy()
+  })
+
+  it('removes the celebration on its own after a short time and leaves the board unchanged', async () => {
+    await renderBoardWithItems()
+    vi.useFakeTimers()
+
+    moveCard('Review intake', 'Done')
+    expectCelebrationFor('Review intake')
+    advance(500)
+    expectCelebrationFor('Review intake')
+    expectConfetti()
+
+    advance(1500)
+    expect(celebrations().filter(status => /Review intake/.test(status.textContent ?? ''))).toHaveLength(0)
+    expect(confettiPieces()).toHaveLength(0)
+    expect(columnTitles('Done')).toEqual(['Review intake'])
+    expect(columnTitles('To Do')).toEqual(['Prepare visit', 'Send reminder'])
+    expect(screen.getAllByRole('listitem')).toHaveLength(3)
+  })
+
+  it('does not celebrate a move from To Do to Doing', async () => {
+    await renderBoardWithItems()
+    moveCard('Review intake', 'Doing')
+
+    expect(columnTitles('Doing')).toEqual(['Review intake'])
+    expectNoCelebration()
+  })
+
+  it('does not celebrate reordering cards already in Done', async () => {
+    await renderBoardWithItems()
+    vi.useFakeTimers()
+    moveCard('Review intake', 'Done')
+    moveCard('Prepare visit', 'Done')
+    advance(2000)
+    expectNoCelebration()
+
+    dropOnCard('Prepare visit', 'Review intake', 'before')
+
+    expect(columnTitles('Done')).toEqual(['Prepare visit', 'Review intake'])
+    expectNoCelebration()
+  })
+
+  it('does not celebrate a card moved out of Done', async () => {
+    await renderBoardWithItems()
+    vi.useFakeTimers()
+    moveCard('Review intake', 'Done')
+    advance(2000)
+    expectNoCelebration()
+
+    moveCard('Review intake', 'Doing')
+
+    expect(columnTitles('Doing')).toEqual(['Review intake'])
+    expect(columnTitles('Done')).toEqual([])
+    expectNoCelebration()
+  })
+
+  it('replaces a showing celebration when another card reaches Done', async () => {
+    await renderBoardWithItems()
+    moveCard('Review intake', 'Done')
+    expectCelebrationFor('Review intake')
+
+    moveCard('Prepare visit', 'Done')
+
+    expectCelebrationFor('Prepare visit')
+    expect(celebrations()[0].textContent).not.toMatch(/Review intake/)
+    expectConfetti()
+    expect(columnTitles('Done')).toEqual(['Review intake', 'Prepare visit'])
+    expect(screen.getAllByRole('listitem')).toHaveLength(3)
+  })
+
+  it('announces the move without confetti when the user prefers reduced motion', async () => {
+    prefersReducedMotion = true
+    await renderBoardWithItems()
+
+    moveCard('Review intake', 'Done')
+
+    expectCelebrationFor('Review intake')
+    expect(confettiPieces()).toHaveLength(0)
+    expect(columnTitles('Done')).toEqual(['Review intake'])
+  })
+})
