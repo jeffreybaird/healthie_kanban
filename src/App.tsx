@@ -41,6 +41,10 @@ function enteredDone(previous: Item[], next: Item[], itemId: number) {
   return before !== undefined && after !== undefined && before.columnId !== 'done' && after.columnId === 'done'
 }
 
+function isInDone(items: Item[], itemId: number) {
+  return items.find(item => item.id === itemId)?.columnId === 'done'
+}
+
 const columns: { id: ColumnId; title: string }[] = [
   { id: 'to-do', title: 'To Do' },
   { id: 'doing', title: 'Doing' },
@@ -89,6 +93,8 @@ export default function App() {
         image: movedItem.character.image,
         animated: !prefersReducedMotion(),
       })
+    } else if (arrival?.itemId === itemId && !isInDone(nextItems, itemId)) {
+      setArrival(null)
     }
   }
 
@@ -139,7 +145,7 @@ export default function App() {
             {columnItems.length > 0 ? (
               <ul className="item-list">
                 {columnItems.map(item => {
-                  const arriving = arrival?.itemId === item.id ? arrival : null
+                  const arriving = item.columnId === 'done' && arrival?.itemId === item.id ? arrival : null
                   return (
                   <li
                     className="item-card"
