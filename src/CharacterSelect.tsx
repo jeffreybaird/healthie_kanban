@@ -1,6 +1,6 @@
 import { useEffect, useId, useState } from 'react'
 
-export type Character = { id: string; name: string }
+export type Character = { id: string; name: string; image?: string }
 type CharacterResponse = {
   data?: { characters?: { results?: (Character | null)[] } }
   errors?: unknown[]
@@ -26,7 +26,7 @@ export default function CharacterSelect({ value, onChange }: {
         const response = await fetch('https://rickandmortyapi.com/graphql', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: '{ characters(page: 1) { results { id name } } }' }),
+          body: JSON.stringify({ query: '{ characters(page: 1) { results { id name image } } }' }),
           signal: controller.signal,
         })
         if (!response.ok) throw new Error('Character request failed')
@@ -35,9 +35,11 @@ export default function CharacterSelect({ value, onChange }: {
         if (payload.errors?.length || !Array.isArray(results)) {
           throw new Error('Invalid character response')
         }
-        const characters = results.filter((character): character is Character =>
-          character !== null && typeof character.id === 'string' && typeof character.name === 'string',
-        )
+        const characters = results
+          .filter((character): character is Character =>
+            character !== null && typeof character.id === 'string' && typeof character.name === 'string',
+          )
+          .map(({ id, name, image }) => (typeof image === 'string' && image ? { id, name, image } : { id, name }))
         if (!controller.signal.aborted) setState({ status: 'ready', characters })
       } catch {
         if (!controller.signal.aborted) setState({ status: 'error' })

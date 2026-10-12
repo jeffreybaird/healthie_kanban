@@ -1,10 +1,16 @@
 import { useCallback, useRef, useState, type DragEvent, type FormEvent } from 'react'
-import Celebration from './Celebration'
 import CharacterSelect, { type Character } from './CharacterSelect'
+import { Arrival, DonePortal, prefersReducedMotion } from './Portal'
 
 type ColumnId = 'to-do' | 'doing' | 'done'
 type Item = { id: number; title: string; character: Character; columnId: ColumnId }
 type Placement = 'before' | 'after'
+type ArrivalState = { id: number; itemId: number; title: string; image?: string; animated: boolean }
+
+/** Lets the arriving card's fall start from the portal above its column. */
+function measureFallDistance(card: HTMLLIElement | null) {
+  card?.style.setProperty('--arrival-fall', `${card.offsetTop}px`)
+}
 
 function dropPlacement(event: DragEvent<HTMLLIElement>): Placement {
   const bounds = event.currentTarget.getBoundingClientRect()
@@ -48,9 +54,10 @@ export default function App() {
   const nextItemId = useRef(1)
   const draggedItemId = useRef<number | null>(null)
   const [insertion, setInsertion] = useState<{ itemId: number; placement: Placement } | null>(null)
-  const [celebration, setCelebration] = useState<{ id: number; title: string } | null>(null)
-  const nextCelebrationId = useRef(1)
-  const dismissCelebration = useCallback(() => setCelebration(null), [])
+  const [portalOpen, setPortalOpen] = useState(false)
+  const [arrival, setArrival] = useState<ArrivalState | null>(null)
+  const nextArrivalId = useRef(1)
+  const dismissArrival = useCallback(() => setArrival(null), [])
 
   function addItem(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -67,6 +74,7 @@ export default function App() {
     const itemId = draggedItemId.current
     draggedItemId.current = null
     setInsertion(null)
+    setPortalOpen(false)
     if (itemId === null) return
 
     const nextItems = moveItemInList(items, itemId, columnId, targetId, placement)
@@ -74,7 +82,13 @@ export default function App() {
     setItems(nextItems)
     if (enteredDone(items, nextItems, itemId)) {
       const movedItem = nextItems.find(item => item.id === itemId)!
-      setCelebration({ id: nextCelebrationId.current++, title: movedItem.title })
+      setArrival({
+        id: nextArrivalId.current++,
+        itemId,
+        title: movedItem.title,
+        image: movedItem.character.image,
+        animated: !prefersReducedMotion(),
+      })
     }
   }
 
@@ -124,15 +138,26 @@ export default function App() {
             <h2 id={`${column.id}-heading`}>{column.title}</h2>
             {columnItems.length > 0 ? (
               <ul className="item-list">
-                {columnItems.map(item => (
+                {columnItems.map(item => {
+                  const arriving = arrival?.itemId === item.id ? arrival : null
+                  return (
                   <li
                     className="item-card"
                     key={item.id}
                     draggable
                     data-insertion={insertion?.itemId === item.id ? insertion.placement : undefined}
+                    data-arriving={arriving?.animated ? 'true' : undefined}
+                    ref={arriving?.animated ? measureFallDistance : undefined}
                     onDragStart={event => {
                       draggedItemId.current = item.id
                       setInsertion(null)
+                      if (item.columnId !== 'done') {
+                        setPortalOpen(!prefersReducedMotion())
+                        if (item.character.image) {
+                          const prefetch = new Image()
+                          prefetch.src = item.character.image
+                        }
+                      }
                       event.dataTransfer.effectAllowed = 'move'
                       event.dataTransfer.setData('text/plain', String(item.id))
                     }}
@@ -156,21 +181,25 @@ export default function App() {
                     onDragEnd={() => {
                       draggedItemId.current = null
                       setInsertion(null)
+                      setPortalOpen(false)
                     }}
                   >
+                    {arriving?.image && <img src={arriving.image} alt="" className="arrival-rider" />}
                     <h3>{item.title}</h3>
                     <p>{item.character.name}</p>
                   </li>
-                ))}
+                  )
+                })}
               </ul>
             ) : <p className="empty-state">No items yet.</p>}
+            {column.id === 'done' && portalOpen && <DonePortal />}
+            {column.id === 'done' && arrival && (
+              <Arrival key={arrival.id} title={arrival.title} showPortal={arrival.animated} onDismiss={dismissArrival} />
+            )}
           </section>
           )
         })}
       </div>
-      {celebration && (
-        <Celebration key={celebration.id} title={celebration.title} onDismiss={dismissCelebration} />
-      )}
     </main>
   )
 }

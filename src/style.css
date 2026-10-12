@@ -69,23 +69,82 @@ p { line-height: 1.6; }
   color: #52616b;
   text-align: center;
 }
-.confetti { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 10; }
-.confetti-piece {
+/* Done celebration: a portal swirls over Done while a card is dragged, then opens above it. */
+.column { position: relative; }
+.portal {
   position: absolute;
-  top: -1rem;
-  left: var(--confetti-left, 50%);
-  width: .5rem;
-  height: .875rem;
-  border-radius: 2px;
-  opacity: 0;
-  animation: confetti-fall 1.2s ease-in var(--confetti-delay, 0ms) forwards;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  border-radius: inherit;
+  background: radial-gradient(circle, #0b3a22 0%, #082618 60%, #04140c 100%);
+  pointer-events: none;
+  animation: portal-open 300ms cubic-bezier(.2, .9, .3, 1.3);
 }
-.confetti-piece:nth-child(3n) { width: .625rem; height: .625rem; border-radius: 50%; }
-.confetti-piece:nth-child(4n + 1) { animation-duration: 1.05s; }
-@keyframes confetti-fall {
-  0% { opacity: 1; transform: translateY(0) rotate(0); }
-  80% { opacity: 1; }
-  100% { opacity: 0; transform: translateY(85vh) rotate(var(--confetti-spin, 1turn)); }
+.portal::before,
+.arrival-portal::before {
+  content: "";
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, #e9ffd2 0 18%, #9cf25a 34%, transparent 62%),
+    conic-gradient(#b8ff4a, #2f9e44, #0d5c2c, #7bdc3a, #c9ff7a, #1f7a3a, #b8ff4a);
+  box-shadow: 0 0 1.5rem .5rem rgb(120 230 70 / 55%);
+  animation: portal-spin 1.1s linear infinite;
+}
+.portal::before { width: min(80%, 14rem); aspect-ratio: 1; }
+.arrival-portal {
+  position: absolute;
+  top: -2.25rem;
+  left: 50%;
+  z-index: 3;
+  display: grid;
+  width: min(80%, 10rem);
+  height: 3.5rem;
+  place-items: stretch;
+  pointer-events: none;
+  transform: translateX(-50%) scale(0);
+  animation: portal-arrive 1200ms ease-in-out forwards;
+}
+.arrival-portal::before { width: 100%; height: 100%; }
+.item-card { position: relative; }
+.item-card[data-arriving="true"] {
+  z-index: 2;
+  background: #fff;
+  animation: card-arrive 900ms cubic-bezier(.3, 0, .4, 1) both;
+}
+.arrival-rider {
+  position: absolute;
+  top: -1.5rem;
+  right: 1rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 2px solid #397c68;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #e9eff1;
+  animation: rider-bob 450ms ease-in-out infinite alternate;
+}
+@keyframes portal-open {
+  from { opacity: 0; transform: scale(.2); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes portal-spin { to { rotate: 1turn; } }
+@keyframes portal-arrive {
+  0% { transform: translateX(-50%) scale(0); }
+  20%, 70% { transform: translateX(-50%) scale(1); }
+  100% { transform: translateX(-50%) scale(0); }
+}
+@keyframes card-arrive {
+  0% { opacity: 0; transform: translateY(calc(-1 * var(--arrival-fall, 6rem) - 1rem)) scale(.4); }
+  20% { opacity: 1; transform: translateY(calc(-1 * var(--arrival-fall, 6rem) + 1rem)) scale(.85); }
+  75% { transform: translateY(0) scale(1); }
+  87% { transform: translateY(-.5rem); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes rider-bob {
+  from { transform: translateY(0); }
+  to { transform: translateY(-.25rem); }
 }
 .celebration-message {
   position: fixed;
@@ -110,7 +169,8 @@ p { line-height: 1.6; }
   to { opacity: 1; transform: translate(-50%, 0); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .confetti { display: none; }
+  .portal, .arrival-portal { display: none; }
+  .portal::before, .arrival-portal::before, .item-card[data-arriving="true"], .arrival-rider,
   .celebration-message { animation: none; }
 }
 @media (max-width: 640px) {
