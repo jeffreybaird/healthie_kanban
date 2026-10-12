@@ -158,10 +158,6 @@ export default function App() {
                       setInsertion(null)
                       if (item.columnId !== 'done') {
                         setPortalOpen(!prefersReducedMotion())
-                        if (item.character.image) {
-                          const prefetch = new Image()
-                          prefetch.src = item.character.image
-                        }
                       }
                       event.dataTransfer.effectAllowed = 'move'
                       event.dataTransfer.setData('text/plain', String(item.id))

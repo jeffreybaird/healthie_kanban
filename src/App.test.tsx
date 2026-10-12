@@ -595,27 +595,6 @@ describe('Portal celebration', () => {
     expectAnnouncementFor(title)
   }
 
-  function stubImagePrefetch() {
-    const sources: string[] = []
-    class RecordingImage {
-      private source = ''
-      onload: unknown = null
-      onerror: unknown = null
-      decoding = 'auto'
-      get src() { return this.source }
-      set src(value: string) {
-        this.source = value
-        sources.push(value)
-      }
-      setAttribute(name: string, value: string) {
-        if (name === 'src') this.src = value
-      }
-      decode() { return Promise.resolve() }
-    }
-    vi.stubGlobal('Image', RecordingImage)
-    return sources
-  }
-
   function advance(ms: number) {
     act(() => { vi.advanceTimersByTime(ms) })
   }
@@ -679,29 +658,14 @@ describe('Portal celebration', () => {
     expectNoCelebration()
   })
 
-  it.each([
-    ['To Do', 'Review intake', BETH_IMAGE],
-    ['Doing', 'Prepare visit', BIRDPERSON_IMAGE],
-  ])('prefetches the character image when a %s card starts dragging', async (column, title, image) => {
-    await renderBoardWithItems()
-    if (column === 'Doing') moveCard(title, 'Doing')
-    const prefetched = stubImagePrefetch()
-
-    fireEvent.dragStart(boardCard(title), { dataTransfer: dragData() })
-
-    expect(prefetched).toContain(image)
-  })
-
-  it('prefetches nothing and still opens the portal when the character has no image', async () => {
+  it('opens the portal when the character has no image', async () => {
     await renderBoardWithItems([
       { id: '41', name: 'Beth Smith', image: BETH_IMAGE },
       { id: '72', name: 'Birdperson' },
     ])
-    const prefetched = stubImagePrefetch()
 
     expect(() => fireEvent.dragStart(boardCard('Prepare visit'), { dataTransfer: dragData() })).not.toThrow()
 
-    expect(prefetched).toEqual([])
     expectDoneColumnPortal()
   })
 
