@@ -5,8 +5,7 @@ board in React and TypeScript. Items are assigned a Rick and Morty character
 from the public GraphQL API, dragged between To Do, Doing and Done, and dropped
 through a portal when they reach Done.
 
-Deployed at https://healthie-kanban.jeffreybaird.com. Session 1, the Rails data
-model, lives in [healthie_rails_journal](https://github.com/jeffreybaird/healthie_rails_journal).
+Deployed at https://healthie-kanban.jeffreybaird.com
 
 ## Running it
 
