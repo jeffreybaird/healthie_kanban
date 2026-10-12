@@ -5,7 +5,7 @@ import { Arrival, DonePortal, prefersReducedMotion } from './Portal'
 type ColumnId = 'to-do' | 'doing' | 'done'
 type Item = { id: number; title: string; character: Character; columnId: ColumnId }
 type Placement = 'before' | 'after'
-type ArrivalState = { id: number; itemId: number; title: string; image?: string; animated: boolean }
+type ArrivalState = { id: number; itemId: number; title: string; animated: boolean }
 
 /** Lets the arriving card's fall start from the portal above its column. */
 function measureFallDistance(card: HTMLLIElement | null) {
@@ -90,7 +90,6 @@ export default function App() {
         id: nextArrivalId.current++,
         itemId,
         title: movedItem.title,
-        image: movedItem.character.image,
         animated: !prefersReducedMotion(),
       })
     } else if (arrival?.itemId === itemId && !isInDone(nextItems, itemId)) {
@@ -190,9 +189,11 @@ export default function App() {
                       setPortalOpen(false)
                     }}
                   >
-                    {arriving?.image && <img src={arriving.image} alt="" className="arrival-rider" />}
                     <h3>{item.title}</h3>
-                    <p>{item.character.name}</p>
+                    <p className="card-character">
+                      {item.character.image && <img src={item.character.image} alt="" className="card-portrait" />}
+                      {item.character.name}
+                    </p>
                   </li>
                   )
                 })}

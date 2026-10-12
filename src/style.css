@@ -49,6 +49,16 @@ p { line-height: 1.6; }
 .item-card[data-insertion="after"] { box-shadow: 0 3px 0 #14576a; }
 .item-card h3 { margin: 0; font-size: 1rem; }
 .item-card p { margin: .5rem 0 0; color: #52616b; font-size: .875rem; }
+.item-card .card-character { display: flex; align-items: center; gap: .5rem; min-height: 2rem; }
+.card-portrait {
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border: 2px solid #d7e2e5;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #e9eff1;
+}
 .board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.25rem; }
 .column {
   min-height: 22rem;
@@ -129,17 +139,8 @@ p { line-height: 1.6; }
   background: #fff;
   animation: card-arrive 900ms cubic-bezier(.3, 0, .4, 1) both;
 }
-.arrival-rider {
-  position: absolute;
-  top: -1.5rem;
-  right: 1rem;
-  width: 2.5rem;
-  height: 2.5rem;
-  border: 2px solid #397c68;
-  border-radius: 50%;
-  object-fit: cover;
-  background: #e9eff1;
-  animation: rider-bob 450ms ease-in-out infinite alternate;
+.item-card[data-arriving="true"] .card-portrait {
+  animation: portrait-bob 450ms ease-in-out 2 alternate;
 }
 @keyframes portal-open {
   from { opacity: 0; transform: scale(.2); }
@@ -158,7 +159,7 @@ p { line-height: 1.6; }
   87% { transform: translateY(-.5rem); }
   100% { opacity: 1; transform: translateY(0); }
 }
-@keyframes rider-bob {
+@keyframes portrait-bob {
   from { transform: translateY(0); }
   to { transform: translateY(-.25rem); }
 }
@@ -186,7 +187,7 @@ p { line-height: 1.6; }
 }
 @media (prefers-reduced-motion: reduce) {
   .portal, .arrival-portal { display: none; }
-  .portal-ring, .item-card[data-arriving="true"], .arrival-rider,
+  .portal-ring, .item-card[data-arriving="true"], .card-portrait,
   .celebration-message { animation: none; }
 }
 @media (max-width: 640px) {

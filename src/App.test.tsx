@@ -44,6 +44,18 @@ function boardCard(title: string) {
   return screen.getAllByRole('listitem').find(card => within(card).queryByRole('heading', { name: title }))!
 }
 
+/** The character portrait is a permanent, decorative part of the card itself. */
+function expectCardPortrait(title: string, image?: string) {
+  const portraits = boardCard(title).querySelectorAll('img')
+  if (image) {
+    expect(portraits).toHaveLength(1)
+    expect(portraits[0].getAttribute('src')).toBe(image)
+    expect(portraits[0].getAttribute('alt')).toBe('')
+  } else {
+    expect(portraits).toHaveLength(0)
+  }
+}
+
 function columnTitles(name: string) {
   return within(boardColumn(name)).queryAllByRole('listitem')
     .map(card => within(card).getByRole('heading').textContent)
@@ -180,7 +192,7 @@ describe('Character selection', () => {
 describe('Item creation', () => {
   async function renderWithCharacters() {
     fetchMock.mockResolvedValue(new Response(JSON.stringify({
-      data: { characters: { results: [{ id: '41', name: 'Beth Smith' }, { id: '72', name: 'Birdperson' }] } },
+      data: { characters: { results: [{ id: '41', name: 'Beth Smith', image: BETH_IMAGE }, { id: '72', name: 'Birdperson' }] } },
     }), { status: 200 }))
     render(<App />)
     await screen.findByRole('option', { name: 'Beth Smith' })
@@ -221,6 +233,8 @@ describe('Item creation', () => {
     expect(toDo.getAllByText('Beth Smith')).toHaveLength(1)
     expect(toDo.queryByText('Birdperson')).toBeNull()
     expect(toDo.queryByText('No items yet.')).toBeNull()
+    expectCardPortrait('Schedule follow-up', BETH_IMAGE)
+    expect(within(boardColumn('To Do')).getAllByRole('listitem')).toHaveLength(1)
     for (const name of ['Doing', 'Done']) {
       const column = within(screen.getByRole('region', { name }))
       expect(column.getByText('No items yet.')).toBeTruthy()
@@ -250,6 +264,8 @@ describe('Item creation', () => {
     for (const text of ['Review intake', 'Beth Smith', 'Prepare visit', 'Birdperson']) {
       expect(toDo.getAllByText(text)).toHaveLength(1)
     }
+    expectCardPortrait('Review intake', BETH_IMAGE)
+    expectCardPortrait('Prepare visit')
     expect(titleInput().value).toBe('')
     expect(characterSelect().value).toBe('')
   })
@@ -385,6 +401,7 @@ describe('Moving items between columns', () => {
       moveCard('Review intake', destination)
       expect(within(boardColumn(destination)).getAllByText('Review intake')).toHaveLength(1)
       expect(within(boardCard('Review intake')).getByText('Beth Smith')).toBeTruthy()
+      expectCardPortrait('Review intake', BETH_IMAGE)
       expect(screen.getAllByText('Review intake')).toHaveLength(1)
       for (const other of ['To Do', 'Doing', 'Done'].filter(name => name !== destination)) {
         expect(within(boardColumn(other)).queryByText('Review intake')).toBeNull()
@@ -462,6 +479,9 @@ describe('Reordering items within columns', () => {
     expect(within(boardCard('Review intake')).getByText('Beth Smith')).toBeTruthy()
     expect(within(boardCard('Prepare visit')).getByText('Birdperson')).toBeTruthy()
     expect(within(boardCard('Send reminder')).getByText('Beth Smith')).toBeTruthy()
+    expectCardPortrait('Review intake', BETH_IMAGE)
+    expectCardPortrait('Prepare visit', BIRDPERSON_IMAGE)
+    expectCardPortrait('Send reminder', BETH_IMAGE)
     expect(columnTitles('Doing')).toEqual([])
     expect(columnTitles('Done')).toEqual([])
   })
@@ -522,8 +542,8 @@ describe('Portal celebration', () => {
     return Array.from(document.querySelectorAll('[data-arriving="true"]'))
   }
 
-  function cardPortraits() {
-    return Array.from(document.querySelectorAll('li img'))
+  function portraitsOutsideCards() {
+    return Array.from(document.querySelectorAll('img')).filter(img => img.closest('li') === null)
   }
 
   function statuses() {
@@ -534,7 +554,6 @@ describe('Portal celebration', () => {
     expect(inColumnPortals()).toHaveLength(0)
     expect(arrivalPortals()).toHaveLength(0)
     expect(arrivingElements()).toHaveLength(0)
-    expect(cardPortraits()).toHaveLength(0)
     expect(statuses()).toHaveLength(0)
   }
 
@@ -570,15 +589,9 @@ describe('Portal celebration', () => {
     const card = boardCard(title)
     expect(arrivingElements()).toEqual([card])
     expect(card.getAttribute('data-arriving')).toBe('true')
-    const portraits = card.querySelectorAll('img')
-    if (image) {
-      expect(portraits).toHaveLength(1)
-      expect(portraits[0].getAttribute('src')).toBe(image)
-      expect(portraits[0].getAttribute('alt')).toBe('')
-    } else {
-      expect(portraits).toHaveLength(0)
-    }
-    expect(cardPortraits()).toHaveLength(image ? 1 : 0)
+    // The card drops as it is: its own portrait, never a second one added for the arrival.
+    expectCardPortrait(title, image)
+    expect(portraitsOutsideCards()).toHaveLength(0)
     expectAnnouncementFor(title)
   }
 
@@ -760,6 +773,7 @@ describe('Portal celebration', () => {
     expect(columnTitles('Done')).toEqual(['Review intake'])
     expect(columnTitles('To Do')).toEqual(['Prepare visit', 'Send reminder'])
     expect(within(boardCard('Review intake')).getByText('Beth Smith')).toBeTruthy()
+    expectCardPortrait('Review intake', BETH_IMAGE)
     expect(screen.getAllByRole('listitem')).toHaveLength(3)
   })
 
@@ -809,7 +823,7 @@ describe('Portal celebration', () => {
 
     const card = boardCard('Review intake')
     expect(card.hasAttribute('data-arriving')).toBe(false)
-    expect(card.querySelectorAll('img')).toHaveLength(0)
+    expectCardPortrait('Review intake', BETH_IMAGE)
     expect(within(card).getByText('Beth Smith')).toBeTruthy()
     expect(columnTitles('Doing')).toEqual(['Review intake'])
     expect(columnTitles('Done')).toEqual([])
@@ -827,7 +841,7 @@ describe('Portal celebration', () => {
     expectArrivalFor('Prepare visit', BIRDPERSON_IMAGE)
     expect(statuses()[0].textContent).not.toMatch(/Review intake/)
     expect(boardCard('Review intake').hasAttribute('data-arriving')).toBe(false)
-    expect(boardCard('Review intake').querySelectorAll('img')).toHaveLength(0)
+    expectCardPortrait('Review intake', BETH_IMAGE)
     expect(columnTitles('Done')).toEqual(['Review intake', 'Prepare visit'])
     expect(screen.getAllByRole('listitem')).toHaveLength(3)
   })
@@ -849,15 +863,14 @@ describe('Portal celebration', () => {
     expect(arrivalPortals()).toHaveLength(0)
     expect(arrivingElements()).toHaveLength(0)
     expectAnnouncementFor('Review intake')
-    const portraits = boardCard('Review intake').querySelectorAll('img')
-    expect(portraits).toHaveLength(1)
-    expect(portraits[0].getAttribute('src')).toBe(BETH_IMAGE)
-    expect(portraits[0].getAttribute('alt')).toBe('')
+    expectCardPortrait('Review intake', BETH_IMAGE)
+    expect(portraitsOutsideCards()).toHaveLength(0)
     expect(columnTitles('Done')).toEqual(['Review intake'])
 
     advance(2000)
     expectNoCelebration()
     expect(columnTitles('Done')).toEqual(['Review intake'])
+    expectCardPortrait('Review intake', BETH_IMAGE)
   })
 
   it('still runs the arrival without a portrait when the character has no image', async () => {
@@ -870,6 +883,7 @@ describe('Portal celebration', () => {
 
     expectArrivalFor('Prepare visit')
     expect(within(boardCard('Prepare visit')).getByText('Birdperson')).toBeTruthy()
+    expectCardPortrait('Review intake', BETH_IMAGE)
     expect(columnTitles('Done')).toEqual(['Prepare visit'])
   })
 })
