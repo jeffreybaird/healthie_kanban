@@ -799,6 +799,24 @@ describe('Portal celebration', () => {
     expectNoCelebration()
   })
 
+  it('ends the arrival when its card is dragged back out of Done before the arrival is dismissed', async () => {
+    await renderBoardWithItems()
+    vi.useFakeTimers()
+    moveCard('Review intake', 'Done')
+    expectArrivalFor('Review intake', BETH_IMAGE)
+
+    moveCard('Review intake', 'Doing')
+
+    const card = boardCard('Review intake')
+    expect(card.hasAttribute('data-arriving')).toBe(false)
+    expect(card.querySelectorAll('img')).toHaveLength(0)
+    expect(within(card).getByText('Beth Smith')).toBeTruthy()
+    expect(columnTitles('Doing')).toEqual(['Review intake'])
+    expect(columnTitles('Done')).toEqual([])
+    expect(screen.getAllByRole('listitem')).toHaveLength(3)
+    expectNoCelebration()
+  })
+
   it('replaces a showing arrival when another card reaches Done', async () => {
     await renderBoardWithItems()
     moveCard('Review intake', 'Done')
