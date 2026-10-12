@@ -46,7 +46,7 @@ static-analysis, deployment, and project constraints. Follow [.docs/agent-workfl
 red → accepted tests → implementation → green → independent review.
 Accepted tests are a contract: only the test writer changes them when the
 expected behavior changes, with renewed review. Never weaken tests to pass.
-The orchestrator coordinates the pipeline. This hook restricts only direct source
-and test edits; other files, tools and commands retain ordinary native permissions.
+This hook restricts only direct source and test edits; other files, tools and
+commands retain ordinary native permissions.
 Do not use alternate editing routes to evade the source/test ownership workflow.
 <!-- END MANAGED AGENT WORKFLOW -->

@@ -7,7 +7,7 @@ from pathlib import Path
 import stat
 import sys
 
-ROLES = ('spec_writer', 'implementer', 'runner', 'reviewer', 'orchestrator')
+ROLES = ('spec_writer', 'implementer', 'runner', 'reviewer')
 VERSION = '2.0.0'
 
 

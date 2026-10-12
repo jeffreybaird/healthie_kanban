@@ -7,10 +7,11 @@ runner verifies green; reviewer independently checks implementation and final
 diff. Repeat findings through the responsible role. The orchestrator coordinates
 delegation as a workflow responsibility, not a hook permission restriction.
 
-Claude subagents cannot start other subagents, so in Claude Code the
-main session acts as orchestrator: it delegates each step to the workflow-*
-agents and makes no source or test edits itself. Codex may use
-workflow_orchestrator directly.
+In this repository, the Claude Code main session acts as orchestrator. It assigns
+work to `workflow-spec-writer`, `workflow-implementer`, `workflow-runner` and
+`workflow-reviewer`, handles handoffs and follow-up work, and makes no source or
+test edits itself. This is the project's coordination policy. Codex may use
+`workflow_orchestrator` directly.
 
 Accepted tests are the contract. Never weaken an accepted test to accommodate
 an implementation defect. Changes to expected behavior require a test-writer
@@ -57,7 +58,7 @@ status chatter or reduce the saved evidence.
 
 ## Pull request test evidence
 
-Every PR description must include relevant Ruby Cucumber or Elixir Cucumberex
+Every PR description must include relevant Ruby Cucumber
 feature/scenario specifications for its changes. Identify feature paths and
 scenario names, and include readable Gherkin, scenario/spec content, or actual
 executed scenario output. Names or links alone are insufficient; a generic
@@ -65,10 +66,7 @@ test-passed summary does not show the behavior covered.
 
 For Ruby, run `bundle exec rspec <relevant spec paths> --format documentation`
 and include the actual command, documentation output and results. Cucumber
-scenario output comes from `bundle exec cucumber --format pretty --strict`.
-For Elixir, run `mix test <relevant test paths> --trace` for focused ExUnit output
-and `MIX_ENV=test mix cucumber --format pretty --strict` for Cucumberex output.
-Use paths relevant to the included changes. Report failures, skipped and pending
+scenario output comes from `bundle exec cucumber --format pretty --strict`. Report failures, skipped and pending
 examples honestly. Never fabricate output or claim an unrun check passed. Long
 output may use expandable details blocks while keeping the result visible.
 
@@ -112,30 +110,6 @@ that leaves tests failing; do not commit incomplete cleanup. The PR description
 must record the removed code and tests, or state that no dead code was found.
 Record any test-removal patch still awaiting user approval or blocked by hooks.
 
-## Elixir doctests
-
-For Elixir projects, doctests must demonstrate meaningful use of the function with
-representative valid inputs and assert its intended result. Include at least one
-happy-path example; nil, empty-input, fallback, or error examples alone are
-insufficient. For predicates, include an input that satisfies the predicate. For
-time-dependent predicates, show valid inputs on both sides of the time condition,
-using a stable clock or generous relative offsets to avoid brittle date-dependent
-examples. Keep useful edge cases as additional examples, not substitutes for the
-happy path.
-
-Inventory `@doc` and `@moduledoc` `iex>` examples across the project. Ensure every
-module containing doctests is registered with `doctest` in ExUnit. Run all doctests
-through the normal `mix test` suite, including CI; do not leave registrations
-skipped, excluded, filtered out, or confined to a separate command. Verify actual
-execution of all doctests in the normal suite; registration alone is insufficient.
-
-Verify the module is registered with `doctest` in an ExUnit test and run those
-tests. An `iex>` block alone does not make an example execute. Review examples
-by asking whether an implementation that always returns the fallback value would
-still pass; if so, add an example exercising the intended behavior. Follow project
-rules for functions requiring database or external-service setup; cover their
-successful behavior with appropriate tests rather than token fallback doctests.
-
 ## Security advisory review
 
 Every agent review must check and explicitly report security advisories, including
@@ -169,8 +143,7 @@ logical change into commits that leave broken intermediate states.
 
 ## Precommit corrections
 
-For Elixir projects, run `mix format --force` before the remaining precommit
-checks. For Ruby projects using RuboCop, run `bundle exec rubocop --autocorrect`
+For Ruby projects using RuboCop, run `bundle exec rubocop --autocorrect`
 first, then recheck the corrected result. Correctable offenses are not a reason
 to stop before attempting safe autocorrection; unresolved lint offenses block the
 commit. Do not use `--autocorrect-all`, disable cops, or weaken lint rules to pass.
@@ -268,19 +241,33 @@ diffs and accepted-test hashes, including changes made by formatters, Git hooks,
 snapshot updates and other commands. Accidental native hook failure is an
 explicitly accepted limitation. There is no separate Git delivery prohibition.
 
-## Bash audit log
+## Native mutation audit log
 
-Claude and Codex Bash calls are audited, not blocked. Only source and test files, as the
-policy classifies them, are examined. Before each call the audit hook snapshots
-dirty source and test files; afterwards it compares. When a source or test file
-changed, it appends one JSON line to `.agent-audit/bash.jsonl` with the command,
-session, agent id, agent type, role (`main` for the parent session), outcome,
-HEAD before and after, each changed source or test path with a unified diff
-capped at 200 lines, and `violations` for changes the role does not own. Other
-files are never read, stored or listed, and calls that change only them are not
-logged. Ignored files are not audited. Codex entries include `platform: codex`;
-existing Claude entries retain their format. Codex before-call context preserves
-the command and agent identity when a completion event omits those fields.
+Claude and Codex Bash calls, Codex apply_patch, and Claude Write, Edit and
+NotebookEdit are audited without changing their native permissions. Only source
+and test files, as the policy classifies them, are examined. Bash snapshots dirty
+source and test files and compares all scoped changes observed during the call.
+Direct edits snapshot only declared scoped operands, including add, update,
+delete and move paths, using their exact current contents even when already dirty.
+Unrelated dirty paths are not attributed to a direct edit. Ignored, unscoped,
+outside-checkout and symlink operands are excluded; reads never follow symlinks.
+
+An actual mutation appends one JSON line to `.agent-audit/bash.jsonl` with
+`tool_name`, a deterministic `note` listing sorted paths and added/modified/deleted
+counts, session, agent id, agent type, runtime model (`null` when unavailable),
+role (`main` for the parent session), outcome, HEAD before and after, each changed
+source or test path with its change kind, classification and ownership result,
+and `violations` for changes the role does not own. No diff or file contents are
+written to the log; compare the recorded HEADs in Git to see what changed. Direct
+entries have `command: null`; raw patches, file contents and other edit payload
+fields are never retained as tool input. Calls that mutate only excluded
+files or change nothing produce no row. Failed calls that mutate scoped files
+still produce a row. Codex entries include `platform: codex`.
+
+Before-call context preserves agent identity and runtime model when completion
+omits those fields. Codex Bash also preserves its command. Supplied completion
+metadata, including explicit `null`, takes precedence. Models come only from
+native event metadata, never from configured settings.
 
 Claude uses PreToolUse, PostToolUse and PostToolUseFailure. Codex uses only
 PreToolUse and PostToolUse; a reported integer exit status determines success
@@ -288,30 +275,33 @@ or failure, otherwise outcome is `unknown`. No completion event means no
 completed audit entry. Audit hooks run synchronously and return an empty object;
 they never approve, deny or alter a call, and audit failures do not stop work.
 
-The command is recorded verbatim, so a secret typed into a command that also
-changes a source or test file enters the log. Keep secrets out of commands.
-Snapshots write the contents of dirty source and test files to the local Git
+Bash command privacy: The command is recorded verbatim, so a secret typed into
+a command that also changes a source or test file enters the log. Keep secrets
+out of commands.
+Snapshots write the contents of scoped source and test files to the local Git
 object store as unreferenced blobs; `git gc` prunes them and they are never
 pushed. Pending markers live under `.git/agent-audit/`.
-Codex pending markers temporarily store raw commands and agent identity even for
-calls that change only noncode files or no files. They do not store other tool
-arguments. Completion replaces them with timing-only markers; interrupted calls
-can leave command context behind. Stale markers are removed only when a later
-tracked call starts after they are 24 hours old, not by a background timer.
-Claude pending markers do not add command or identity storage.
+Pending markers store only timing, snapshot references and minimal identity/model
+metadata. Codex Bash additionally stores its raw command, even for calls that
+change only noncode files or no files. Claude Bash and all direct edits never
+store raw commands or edit payloads in pending markers. Completion replaces
+markers with timing-only records on both platforms; interrupted calls can leave
+pending context behind. Stale markers are removed only when a later tracked call
+starts after they are 24 hours old, not by a background timer.
 
-An entry records changes observed while the command ran, not proof of who made
-them. Claude Write, Edit and NotebookEdit and Codex apply_patch calls are tracked
-for timing only. Every tracked call that ran at any moment during the command,
-finished or not, is listed in
+An entry records changes observed during a call, not proof of who made them.
+Every other tracked call that ran at any moment during the call, finished or not,
+is listed in
 `overlapping_tool_use_ids`, and `attribution` is `ambiguous` when that list is
 not empty, otherwise `exclusive`. An edit that never reports back, such as one
 the guard denied, stops counting after 60 seconds. Treat ambiguous violations
-as leads to check against the other calls, not findings.
+as leads to check against the other calls, not findings. Overlapping Bash and
+direct calls can both record the same observed mutation; a later unchanged Bash
+call produces no duplicate row.
 
 Commit the log with the work. `.gitattributes` uses union merge for it. Reviewers
-check `violations` before accepting. These registrations cover native Bash
-events, not arbitrary MCP commands or external processes. CLI and desktop audit
+check `violations` before accepting. These registrations cover the native tools
+listed above, not arbitrary MCP commands or external processes. CLI and desktop audit
 activation must each be validated separately; installed files are not evidence
 that hooks are trusted or running.
 
@@ -321,8 +311,10 @@ that hooks are trusted or running.
 
 An optional project-owned profile at `.docs/agent-models.json` selects native
 main and workflow role models. Its `schema_version` is `1`. The optional
-`codex` and `claude` objects each accept `model` and `roles`; role keys are
-`spec_writer`, `implementer`, `runner`, `reviewer`, and `orchestrator`.
+`codex` and `claude` objects each accept `model` and `roles`; the profile schema
+supports `spec_writer`, `implementer`, `runner`, `reviewer`, and `orchestrator`.
+This repository uses all five roles for Codex and the first four for Claude.
+Claude coordination uses the main session's model selection.
 Each role accepts `model`, plus `model_reasoning_effort` for Codex or `effort`
 for Claude. Model identifiers must be nonblank strings; the host validates
 availability and model-specific effort support. Codex effort values are
@@ -347,10 +339,13 @@ Codex definitions are in .codex/agents and its hook registration is in
 Claude definitions are in .claude/agents and its registration is in
 .claude/settings.json. This setup adds no Claude tool allowlists, broad Edit
 denials or sandbox overrides. Existing unrelated native settings and hooks are
-preserved. No model is selected by default; the optional profile above makes
-explicit project selections. Codex roles are workflow_spec_writer,
-workflow_implementer, workflow_runner, workflow_reviewer and
-workflow_orchestrator; Claude role names use hyphens.
+preserved. Current agent model settings live in `.codex/agents/*.toml` and the
+frontmatter of `.claude/agents/*.md`; omitted settings follow the platform's
+native defaults. The optional profile above is for the maintained updater.
+Codex roles are `workflow_spec_writer`, `workflow_implementer`, `workflow_runner`,
+`workflow_reviewer` and `workflow_orchestrator`. Claude roles are
+`workflow-spec-writer`, `workflow-implementer`, `workflow-runner` and
+`workflow-reviewer`; its main session coordinates them.
 
 Existing legacy role files remain for reference. Use the workflow roles for
 source/test work; an unrecognized identity cannot edit either class. Existing

@@ -1,7 +1,6 @@
 """Audit source/test mutations from Bash and native direct edits. Never blocks or grants."""
 import argparse
 from datetime import datetime, timezone
-import difflib
 import errno
 import importlib.util
 import json
@@ -15,7 +14,6 @@ import time
 
 LOG = '.agent-audit/bash.jsonl'
 EXCLUDED_PREFIX = '.agent-audit/'
-MAX_DIFF_LINES = 200
 STALE_SECONDS = 24 * 60 * 60
 EDIT_SECONDS = 60
 POST_EVENTS = {'PostToolUse': 'success', 'PostToolUseFailure': 'failure'}
@@ -228,7 +226,7 @@ def file_changes(root, snapshot, policy, role):
             continue
         change = 'added' if before is None else 'deleted' if after is None else 'modified'
         category = guard.classification(root / path, root, policy)
-        record = {'path': path, 'change': change, 'class': category, 'owner_ok': owner_accepts(category, role)}
+        record = {'path': path, 'change': change, 'class': category, 'owner_ok': owner_accepts(category, role)} 
         changes.append(record)
     return head_after, changes
 
