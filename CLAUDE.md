@@ -46,7 +46,17 @@ static-analysis, deployment, and project constraints. Follow [.docs/agent-workfl
 red → accepted tests → implementation → green → independent review.
 Accepted tests are a contract: only the test writer changes them when the
 expected behavior changes, with renewed review. Never weaken tests to pass.
-The orchestrator coordinates the pipeline. This hook restricts only direct source
-and test edits; other files, tools and commands retain ordinary native permissions.
+This hook restricts only direct source and test edits; other files, tools and
+commands retain ordinary native permissions.
 Do not use alternate editing routes to evade the source/test ownership workflow.
 <!-- END MANAGED AGENT WORKFLOW -->
+
+## Claude workflow coordination
+
+The main session coordinates the work and follows the sequence in
+[.docs/agent-workflow.md](.docs/agent-workflow.md). It delegates tests to
+`workflow-spec-writer`, application code to `workflow-implementer`, checks to
+`workflow-runner`, and test and implementation review to `workflow-reviewer`.
+The main session handles handoffs and follow-up work; it does not edit source or
+tests or delegate coordination to another agent. Workflow subagents carry out
+their assigned roles and return their results to the main session.

@@ -7,10 +7,11 @@ runner verifies green; reviewer independently checks implementation and final
 diff. Repeat findings through the responsible role. The orchestrator coordinates
 delegation as a workflow responsibility, not a hook permission restriction.
 
-Claude subagents cannot start other subagents, so in Claude Code the
-main session acts as orchestrator: it delegates each step to the workflow-*
-agents and makes no source or test edits itself. Codex may use
-workflow_orchestrator directly.
+In this repository, the Claude Code main session acts as orchestrator. It assigns
+work to `workflow-spec-writer`, `workflow-implementer`, `workflow-runner` and
+`workflow-reviewer`, handles handoffs and follow-up work, and makes no source or
+test edits itself. This is the project's coordination policy. Codex may use
+`workflow_orchestrator` directly.
 
 Accepted tests are the contract. Never weaken an accepted test to accommodate
 an implementation defect. Changes to expected behavior require a test-writer
@@ -321,8 +322,10 @@ that hooks are trusted or running.
 
 An optional project-owned profile at `.docs/agent-models.json` selects native
 main and workflow role models. Its `schema_version` is `1`. The optional
-`codex` and `claude` objects each accept `model` and `roles`; role keys are
-`spec_writer`, `implementer`, `runner`, `reviewer`, and `orchestrator`.
+`codex` and `claude` objects each accept `model` and `roles`; the profile schema
+supports `spec_writer`, `implementer`, `runner`, `reviewer`, and `orchestrator`.
+This repository uses all five roles for Codex and the first four for Claude.
+Claude coordination uses the main session's model selection.
 Each role accepts `model`, plus `model_reasoning_effort` for Codex or `effort`
 for Claude. Model identifiers must be nonblank strings; the host validates
 availability and model-specific effort support. Codex effort values are
@@ -347,10 +350,13 @@ Codex definitions are in .codex/agents and its hook registration is in
 Claude definitions are in .claude/agents and its registration is in
 .claude/settings.json. This setup adds no Claude tool allowlists, broad Edit
 denials or sandbox overrides. Existing unrelated native settings and hooks are
-preserved. No model is selected by default; the optional profile above makes
-explicit project selections. Codex roles are workflow_spec_writer,
-workflow_implementer, workflow_runner, workflow_reviewer and
-workflow_orchestrator; Claude role names use hyphens.
+preserved. Current agent model settings live in `.codex/agents/*.toml` and the
+frontmatter of `.claude/agents/*.md`; omitted settings follow the platform's
+native defaults. The optional profile above is for the maintained updater.
+Codex roles are `workflow_spec_writer`, `workflow_implementer`, `workflow_runner`,
+`workflow_reviewer` and `workflow_orchestrator`. Claude roles are
+`workflow-spec-writer`, `workflow-implementer`, `workflow-runner` and
+`workflow-reviewer`; its main session coordinates them.
 
 Existing legacy role files remain for reference. Use the workflow roles for
 source/test work; an unrecognized identity cannot edit either class. Existing
