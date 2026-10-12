@@ -1,13 +1,48 @@
-import { useRef, useState, type DragEvent, type FormEvent } from 'react'
+import { useCallback, useRef, useState, type DragEvent, type FormEvent } from 'react'
 import CharacterSelect, { type Character } from './CharacterSelect'
+import { Arrival, DonePortal, prefersReducedMotion } from './Portal'
 
 type ColumnId = 'to-do' | 'doing' | 'done'
 type Item = { id: number; title: string; character: Character; columnId: ColumnId }
 type Placement = 'before' | 'after'
+type ArrivalState = { id: number; itemId: number; title: string; animated: boolean }
+
+/** Lets the arriving card's fall start from the portal above its column. */
+function measureFallDistance(card: HTMLLIElement | null) {
+  card?.style.setProperty('--arrival-fall', `${card.offsetTop}px`)
+}
 
 function dropPlacement(event: DragEvent<HTMLLIElement>): Placement {
   const bounds = event.currentTarget.getBoundingClientRect()
   return event.clientY < bounds.top + bounds.height / 2 ? 'before' : 'after'
+}
+
+function moveItemInList(
+  items: Item[],
+  itemId: number,
+  columnId: ColumnId,
+  targetId?: number,
+  placement?: Placement,
+): Item[] {
+  const item = items.find(candidate => candidate.id === itemId)
+  if (!item) return items
+  const remaining = items.filter(candidate => candidate.id !== itemId)
+  if (item.columnId !== columnId) return [...remaining, { ...item, columnId }]
+  if (targetId === undefined || targetId === itemId) return items
+  const targetIndex = remaining.findIndex(candidate => candidate.id === targetId && candidate.columnId === columnId)
+  if (targetIndex === -1) return items
+  const insertIndex = targetIndex + (placement === 'after' ? 1 : 0)
+  return [...remaining.slice(0, insertIndex), item, ...remaining.slice(insertIndex)]
+}
+
+function enteredDone(previous: Item[], next: Item[], itemId: number) {
+  const before = previous.find(item => item.id === itemId)
+  const after = next.find(item => item.id === itemId)
+  return before !== undefined && after !== undefined && before.columnId !== 'done' && after.columnId === 'done'
+}
+
+function isInDone(items: Item[], itemId: number) {
+  return items.find(item => item.id === itemId)?.columnId === 'done'
 }
 
 const columns: { id: ColumnId; title: string }[] = [
@@ -23,6 +58,10 @@ export default function App() {
   const nextItemId = useRef(1)
   const draggedItemId = useRef<number | null>(null)
   const [insertion, setInsertion] = useState<{ itemId: number; placement: Placement } | null>(null)
+  const [portalOpen, setPortalOpen] = useState(false)
+  const [arrival, setArrival] = useState<ArrivalState | null>(null)
+  const nextArrivalId = useRef(1)
+  const dismissArrival = useCallback(() => setArrival(null), [])
 
   function addItem(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -39,19 +78,23 @@ export default function App() {
     const itemId = draggedItemId.current
     draggedItemId.current = null
     setInsertion(null)
+    setPortalOpen(false)
     if (itemId === null) return
 
-    setItems(previous => {
-      const item = previous.find(candidate => candidate.id === itemId)
-      if (!item) return previous
-      const remaining = previous.filter(candidate => candidate.id !== itemId)
-      if (item.columnId !== columnId) return [...remaining, { ...item, columnId }]
-      if (targetId === undefined || targetId === itemId) return previous
-      const targetIndex = remaining.findIndex(candidate => candidate.id === targetId && candidate.columnId === columnId)
-      if (targetIndex === -1) return previous
-      const insertIndex = targetIndex + (placement === 'after' ? 1 : 0)
-      return [...remaining.slice(0, insertIndex), item, ...remaining.slice(insertIndex)]
-    })
+    const nextItems = moveItemInList(items, itemId, columnId, targetId, placement)
+    if (nextItems === items) return
+    setItems(nextItems)
+    if (enteredDone(items, nextItems, itemId)) {
+      const movedItem = nextItems.find(item => item.id === itemId)!
+      setArrival({
+        id: nextArrivalId.current++,
+        itemId,
+        title: movedItem.title,
+        animated: !prefersReducedMotion(),
+      })
+    } else if (arrival?.itemId === itemId && !isInDone(nextItems, itemId)) {
+      setArrival(null)
+    }
   }
 
   return (
@@ -100,15 +143,22 @@ export default function App() {
             <h2 id={`${column.id}-heading`}>{column.title}</h2>
             {columnItems.length > 0 ? (
               <ul className="item-list">
-                {columnItems.map(item => (
+                {columnItems.map(item => {
+                  const arriving = item.columnId === 'done' && arrival?.itemId === item.id ? arrival : null
+                  return (
                   <li
                     className="item-card"
                     key={item.id}
                     draggable
                     data-insertion={insertion?.itemId === item.id ? insertion.placement : undefined}
+                    data-arriving={arriving?.animated ? 'true' : undefined}
+                    ref={arriving?.animated ? measureFallDistance : undefined}
                     onDragStart={event => {
                       draggedItemId.current = item.id
                       setInsertion(null)
+                      if (item.columnId !== 'done') {
+                        setPortalOpen(!prefersReducedMotion())
+                      }
                       event.dataTransfer.effectAllowed = 'move'
                       event.dataTransfer.setData('text/plain', String(item.id))
                     }}
@@ -132,14 +182,23 @@ export default function App() {
                     onDragEnd={() => {
                       draggedItemId.current = null
                       setInsertion(null)
+                      setPortalOpen(false)
                     }}
                   >
                     <h3>{item.title}</h3>
-                    <p>{item.character.name}</p>
+                    <p className="card-character">
+                      {item.character.image && <img src={item.character.image} alt="" className="card-portrait" />}
+                      {item.character.name}
+                    </p>
                   </li>
-                ))}
+                  )
+                })}
               </ul>
             ) : <p className="empty-state">No items yet.</p>}
+            {column.id === 'done' && portalOpen && <DonePortal />}
+            {column.id === 'done' && arrival && (
+              <Arrival key={arrival.id} title={arrival.title} showPortal={arrival.animated} onDismiss={dismissArrival} />
+            )}
           </section>
           )
         })}

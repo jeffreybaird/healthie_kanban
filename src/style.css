@@ -49,6 +49,16 @@ p { line-height: 1.6; }
 .item-card[data-insertion="after"] { box-shadow: 0 3px 0 #14576a; }
 .item-card h3 { margin: 0; font-size: 1rem; }
 .item-card p { margin: .5rem 0 0; color: #52616b; font-size: .875rem; }
+.item-card .card-character { display: flex; align-items: center; gap: .5rem; min-height: 2rem; }
+.card-portrait {
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border: 2px solid #d7e2e5;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #e9eff1;
+}
 .board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.25rem; }
 .column {
   min-height: 22rem;
@@ -68,6 +78,119 @@ p { line-height: 1.6; }
   border-radius: .5rem;
   color: #52616b;
   text-align: center;
+}
+/* Done celebration: a portal swirls over Done while a card is dragged, then opens above it. */
+.column { position: relative; }
+.portal {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle 11rem, rgb(130 225 80 / 60%) 0 45%, rgb(70 170 60 / 28%) 62%, transparent 100%),
+    radial-gradient(circle, #1f3a22 0%, #1b231d 55%, #1b1d1c 100%);
+  pointer-events: none;
+  animation: portal-open 300ms cubic-bezier(.2, .9, .3, 1.3);
+}
+.portal-swirl {
+  display: block;
+  overflow: visible;
+}
+.portal .portal-swirl { width: min(88%, 16rem); aspect-ratio: 1; }
+.portal-ring {
+  transform-box: view-box;
+  transform-origin: 50% 50%;
+  animation: portal-spin 9s linear infinite;
+}
+.portal-ring-0 { animation-duration: 13s; }
+.portal-ring-1 { animation-duration: 9s; animation-direction: reverse; }
+.portal-ring-2 { animation-duration: 11s; }
+.portal-ring-3 { animation-duration: 6s; animation-direction: reverse; }
+.portal-ring-4 { animation-duration: 8s; }
+.portal-ring-5 { animation-duration: 5s; animation-direction: reverse; }
+.portal-ring-6 { animation-duration: 4s; }
+.arrival-portal {
+  position: absolute;
+  top: -2.75rem;
+  left: 50%;
+  z-index: 3;
+  display: grid;
+  width: min(95%, 16rem);
+  height: 4.25rem;
+  place-items: stretch;
+  pointer-events: none;
+  transform: translateX(-50%) scale(0);
+  animation: portal-arrive 1200ms ease-in-out forwards;
+}
+.arrival-portal .portal-swirl { position: absolute; inset: 0; width: 100%; height: 100%; }
+.arrival-portal::before {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(130 225 80 / 60%), rgb(70 170 60 / 25%) 60%, transparent);
+}
+.item-card { position: relative; }
+.item-card[data-arriving="true"] {
+  z-index: 4;
+  background: #fff;
+  transform-origin: top center;
+  animation: card-arrive 900ms cubic-bezier(.3, 0, .4, 1) 120ms both;
+}
+.item-card[data-arriving="true"] .card-portrait {
+  animation: portrait-bob 450ms ease-in-out 2 alternate;
+}
+@keyframes portal-open {
+  from { opacity: 0; transform: scale(.2); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes portal-spin { to { transform: rotate(1turn); } }
+@keyframes portal-arrive {
+  0% { transform: translateX(-50%) scale(0); }
+  12%, 70% { transform: translateX(-50%) scale(1); }
+  100% { transform: translateX(-50%) scale(0); }
+}
+@keyframes card-arrive {
+  0% { opacity: 0; transform: translateY(calc(-1 * var(--arrival-fall, 6rem) - 1.25rem)) scale(.15); }
+  4% { opacity: 1; }
+  70% { transform: translateY(0) scale(1); }
+  84% { transform: translateY(-.5rem); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes portrait-bob {
+  from { transform: translateY(0); }
+  to { transform: translateY(-.25rem); }
+}
+.celebration-message {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  z-index: 11;
+  max-width: calc(100% - 2rem);
+  margin: 0;
+  padding: .75rem 1.25rem;
+  border-left: 4px solid #397c68;
+  border-radius: .5rem;
+  background: #182c3c;
+  color: #fff;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  box-shadow: 0 .5rem 1.5rem rgb(24 44 60 / 25%);
+  transform: translateX(-50%);
+  animation: celebration-pop 200ms ease-out;
+}
+@keyframes celebration-pop {
+  from { opacity: 0; transform: translate(-50%, .5rem); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .portal, .arrival-portal { display: none; }
+  .portal-ring, .item-card[data-arriving="true"],
+  .item-card[data-arriving="true"] .card-portrait,
+  .celebration-message { animation: none; }
 }
 @media (max-width: 640px) {
   .item-form button { margin-top: 0; }
