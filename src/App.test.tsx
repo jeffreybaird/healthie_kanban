@@ -15,9 +15,17 @@ function dragData() {
   }
 }
 
-async function renderBoardWithItems() {
+const BETH_IMAGE = 'https://rickandmortyapi.com/api/character/avatar/41.jpeg'
+const BIRDPERSON_IMAGE = 'https://rickandmortyapi.com/api/character/avatar/72.jpeg'
+const boardCharacters = [
+  { id: '41', name: 'Beth Smith', image: BETH_IMAGE },
+  { id: '72', name: 'Birdperson', image: BIRDPERSON_IMAGE },
+]
+
+// Review intake and Send reminder are assigned to character 41; Prepare visit to character 72.
+async function renderBoardWithItems(characters: { id: string; name: string; image?: string }[] = boardCharacters) {
   fetchMock.mockResolvedValue(new Response(JSON.stringify({
-    data: { characters: { results: [{ id: '41', name: 'Beth Smith' }, { id: '72', name: 'Birdperson' }] } },
+    data: { characters: { results: characters } },
   }), { status: 200 }))
   render(<App />)
   await screen.findByRole('option', { name: 'Beth Smith' })
@@ -118,6 +126,7 @@ describe('Character selection', () => {
     expect(body.query).toMatch(/\bresults\s*\{/)
     expect(body.query).toMatch(/\bid\b/)
     expect(body.query).toMatch(/\bname\b/)
+    expect(body.query).toMatch(/\bimage\b/)
   })
 
   it('replaces loading feedback with API options and lets the user select a character by ID', async () => {
@@ -498,35 +507,100 @@ describe('Reordering items within columns', () => {
   })
 })
 
-describe('Done celebration', () => {
+describe('Portal celebration', () => {
   let prefersReducedMotion = false
 
-  function celebrations() {
+  function inColumnPortals() {
+    return screen.queryAllByTestId('portal')
+  }
+
+  function arrivalPortals() {
+    return screen.queryAllByTestId('arrival-portal')
+  }
+
+  function arrivingElements() {
+    return Array.from(document.querySelectorAll('[data-arriving="true"]'))
+  }
+
+  function cardPortraits() {
+    return Array.from(document.querySelectorAll('li img'))
+  }
+
+  function statuses() {
     return screen.queryAllByRole('status')
   }
 
-  function confettiPieces() {
-    return screen.queryAllByTestId('confetti-piece')
-  }
-
   function expectNoCelebration() {
-    expect(celebrations()).toHaveLength(0)
-    expect(confettiPieces()).toHaveLength(0)
+    expect(inColumnPortals()).toHaveLength(0)
+    expect(arrivalPortals()).toHaveLength(0)
+    expect(arrivingElements()).toHaveLength(0)
+    expect(cardPortraits()).toHaveLength(0)
+    expect(statuses()).toHaveLength(0)
   }
 
-  function expectCelebrationFor(title: string) {
-    const statuses = celebrations()
-    expect(statuses).toHaveLength(1)
-    expect(statuses[0].textContent).toMatch(new RegExp(title))
-    expect(statuses[0].textContent).toMatch(/done/i)
+  function expectDoneColumnPortal() {
+    const portals = inColumnPortals()
+    expect(portals).toHaveLength(1)
+    const portal = portals[0]
+    expect(within(boardColumn('Done')).getByTestId('portal')).toBe(portal)
+    expect(portal.getAttribute('aria-hidden')).toBe('true')
+    expect(portal.tagName).not.toBe('LI')
+    expect(portal.closest('li')).toBeNull()
+    expect(portal.querySelectorAll('h1, h2, h3, h4, h5, h6, [role="heading"]')).toHaveLength(0)
+    expect(within(boardColumn('Done')).getByRole('heading', { level: 2, name: 'Done' })).toBeTruthy()
   }
 
-  function expectConfetti() {
-    const pieces = confettiPieces()
-    expect(pieces.length).toBeGreaterThanOrEqual(12)
-    for (const piece of pieces) {
-      expect(piece.closest('[aria-hidden="true"]')).not.toBeNull()
+  function expectAnnouncementFor(title: string) {
+    const announced = statuses()
+    expect(announced).toHaveLength(1)
+    // A single text node: no nested elements such as <strong>.
+    expect(announced[0].children).toHaveLength(0)
+    expect(announced[0].textContent).toMatch(new RegExp(title))
+    expect(announced[0].textContent).toMatch(/done/i)
+  }
+
+  function expectArrivalFor(title: string, image?: string) {
+    expect(inColumnPortals()).toHaveLength(0)
+    const arrivals = arrivalPortals()
+    expect(arrivals).toHaveLength(1)
+    expect(arrivals[0].getAttribute('aria-hidden')).toBe('true')
+    expect(arrivals[0].closest('ul')).toBeNull()
+    expect(arrivals[0].closest('li')).toBeNull()
+
+    const card = boardCard(title)
+    expect(arrivingElements()).toEqual([card])
+    expect(card.getAttribute('data-arriving')).toBe('true')
+    const portraits = card.querySelectorAll('img')
+    if (image) {
+      expect(portraits).toHaveLength(1)
+      expect(portraits[0].getAttribute('src')).toBe(image)
+      expect(portraits[0].getAttribute('alt')).toBe('')
+    } else {
+      expect(portraits).toHaveLength(0)
     }
+    expect(cardPortraits()).toHaveLength(image ? 1 : 0)
+    expectAnnouncementFor(title)
+  }
+
+  function stubImagePrefetch() {
+    const sources: string[] = []
+    class RecordingImage {
+      private source = ''
+      onload: unknown = null
+      onerror: unknown = null
+      decoding = 'auto'
+      get src() { return this.source }
+      set src(value: string) {
+        this.source = value
+        sources.push(value)
+      }
+      setAttribute(name: string, value: string) {
+        if (name === 'src') this.src = value
+      }
+      decode() { return Promise.resolve() }
+    }
+    vi.stubGlobal('Image', RecordingImage)
+    return sources
   }
 
   function advance(ms: number) {
@@ -551,36 +625,141 @@ describe('Done celebration', () => {
     vi.useRealTimers()
   })
 
-  it('celebrates a card moved into Done with a status naming the item and decorative confetti', async () => {
+  it('opens a decorative portal inside Done when a To Do card starts dragging', async () => {
     await renderBoardWithItems()
     expectNoCelebration()
 
-    moveCard('Review intake', 'Done')
+    fireEvent.dragStart(boardCard('Review intake'), { dataTransfer: dragData() })
 
-    expectCelebrationFor('Review intake')
-    expectConfetti()
+    expectDoneColumnPortal()
+    expect(screen.getAllByRole('listitem')).toHaveLength(3)
+    expect(columnTitles('To Do')).toEqual(['Review intake', 'Prepare visit', 'Send reminder'])
+    expect(columnTitles('Done')).toEqual([])
+    expect(arrivalPortals()).toHaveLength(0)
+    expect(statuses()).toHaveLength(0)
+  })
+
+  it('opens the portal when a Doing card starts dragging', async () => {
+    await renderBoardWithItems()
+    moveCard('Review intake', 'Doing')
+    expectNoCelebration()
+
+    fireEvent.dragStart(boardCard('Review intake'), { dataTransfer: dragData() })
+
+    expectDoneColumnPortal()
+    expect(columnTitles('Doing')).toEqual(['Review intake'])
+    expect(screen.getAllByRole('listitem')).toHaveLength(3)
+  })
+
+  it('opens no portal when a card already in Done starts dragging', async () => {
+    await renderBoardWithItems()
+    vi.useFakeTimers()
+    moveCard('Review intake', 'Done')
+    advance(2000)
+    expectNoCelebration()
+
+    const card = boardCard('Review intake')
+    const dataTransfer = dragData()
+    fireEvent.dragStart(card, { dataTransfer })
+    expect(inColumnPortals()).toHaveLength(0)
+    fireEvent.dragEnd(card, { dataTransfer })
+    expectNoCelebration()
+  })
+
+  it.each([
+    ['To Do', 'Review intake', BETH_IMAGE],
+    ['Doing', 'Prepare visit', BIRDPERSON_IMAGE],
+  ])('prefetches the character image when a %s card starts dragging', async (column, title, image) => {
+    await renderBoardWithItems()
+    if (column === 'Doing') moveCard(title, 'Doing')
+    const prefetched = stubImagePrefetch()
+
+    fireEvent.dragStart(boardCard(title), { dataTransfer: dragData() })
+
+    expect(prefetched).toContain(image)
+  })
+
+  it('prefetches nothing and still opens the portal when the character has no image', async () => {
+    await renderBoardWithItems([
+      { id: '41', name: 'Beth Smith', image: BETH_IMAGE },
+      { id: '72', name: 'Birdperson' },
+    ])
+    const prefetched = stubImagePrefetch()
+
+    expect(() => fireEvent.dragStart(boardCard('Prepare visit'), { dataTransfer: dragData() })).not.toThrow()
+
+    expect(prefetched).toEqual([])
+    expectDoneColumnPortal()
+  })
+
+  it('closes the portal when a drag is cancelled or dropped outside any column', async () => {
+    await renderBoardWithItems()
+    const card = boardCard('Review intake')
+    const dataTransfer = dragData()
+
+    fireEvent.dragStart(card, { dataTransfer })
+    expectDoneColumnPortal()
+    fireEvent.dragEnd(card, { dataTransfer })
+    expectNoCelebration()
+
+    fireEvent.dragStart(card, { dataTransfer })
+    expectDoneColumnPortal()
+    fireEvent.drop(screen.getByRole('heading', { level: 1 }), { dataTransfer })
+    fireEvent.dragEnd(card, { dataTransfer })
+    expectNoCelebration()
+    expect(columnTitles('To Do')).toEqual(['Review intake', 'Prepare visit', 'Send reminder'])
+    expect(columnTitles('Done')).toEqual([])
+  })
+
+  it('swaps the column portal for an arrival portal and drops the card with its character portrait', async () => {
+    await renderBoardWithItems()
+    const card = boardCard('Review intake')
+    const dataTransfer = dragData()
+
+    fireEvent.dragStart(card, { dataTransfer })
+    expectDoneColumnPortal()
+    expect(fireEvent.dragOver(boardColumn('Done'), { dataTransfer })).toBe(false)
+    expectDoneColumnPortal()
+    fireEvent.drop(boardColumn('Done'), { dataTransfer })
+
+    expectArrivalFor('Review intake', BETH_IMAGE)
     expect(columnTitles('Done')).toEqual(['Review intake'])
     expect(columnTitles('To Do')).toEqual(['Prepare visit', 'Send reminder'])
     expect(columnTitles('Doing')).toEqual([])
     expect(screen.getAllByRole('listitem')).toHaveLength(3)
     expect(within(boardCard('Review intake')).getByText('Beth Smith')).toBeTruthy()
+
+    fireEvent.dragEnd(boardCard('Review intake'), { dataTransfer })
+    expectArrivalFor('Review intake', BETH_IMAGE)
   })
 
-  it('removes the celebration on its own after a short time and leaves the board unchanged', async () => {
+  it('celebrates a Doing card dropped into Done', async () => {
+    await renderBoardWithItems()
+    moveCard('Prepare visit', 'Doing')
+    expectNoCelebration()
+
+    moveCard('Prepare visit', 'Done')
+
+    expectArrivalFor('Prepare visit', BIRDPERSON_IMAGE)
+    expect(columnTitles('Done')).toEqual(['Prepare visit'])
+    expect(columnTitles('Doing')).toEqual([])
+    expect(screen.getAllByRole('listitem')).toHaveLength(3)
+  })
+
+  it('dismisses the arrival on its own and leaves the card in Done', async () => {
     await renderBoardWithItems()
     vi.useFakeTimers()
 
     moveCard('Review intake', 'Done')
-    expectCelebrationFor('Review intake')
+    expectArrivalFor('Review intake', BETH_IMAGE)
     advance(500)
-    expectCelebrationFor('Review intake')
-    expectConfetti()
+    expectArrivalFor('Review intake', BETH_IMAGE)
 
     advance(1500)
-    expect(celebrations().filter(status => /Review intake/.test(status.textContent ?? ''))).toHaveLength(0)
-    expect(confettiPieces()).toHaveLength(0)
+    expectNoCelebration()
     expect(columnTitles('Done')).toEqual(['Review intake'])
     expect(columnTitles('To Do')).toEqual(['Prepare visit', 'Send reminder'])
+    expect(within(boardCard('Review intake')).getByText('Beth Smith')).toBeTruthy()
     expect(screen.getAllByRole('listitem')).toHaveLength(3)
   })
 
@@ -620,28 +799,59 @@ describe('Done celebration', () => {
     expectNoCelebration()
   })
 
-  it('replaces a showing celebration when another card reaches Done', async () => {
+  it('replaces a showing arrival when another card reaches Done', async () => {
     await renderBoardWithItems()
     moveCard('Review intake', 'Done')
-    expectCelebrationFor('Review intake')
+    expectArrivalFor('Review intake', BETH_IMAGE)
 
     moveCard('Prepare visit', 'Done')
 
-    expectCelebrationFor('Prepare visit')
-    expect(celebrations()[0].textContent).not.toMatch(/Review intake/)
-    expectConfetti()
+    expectArrivalFor('Prepare visit', BIRDPERSON_IMAGE)
+    expect(statuses()[0].textContent).not.toMatch(/Review intake/)
+    expect(boardCard('Review intake').hasAttribute('data-arriving')).toBe(false)
+    expect(boardCard('Review intake').querySelectorAll('img')).toHaveLength(0)
     expect(columnTitles('Done')).toEqual(['Review intake', 'Prepare visit'])
     expect(screen.getAllByRole('listitem')).toHaveLength(3)
   })
 
-  it('announces the move without confetti when the user prefers reduced motion', async () => {
+  it('announces the arrival and shows the portrait without portals when the user prefers reduced motion', async () => {
     prefersReducedMotion = true
     await renderBoardWithItems()
+    vi.useFakeTimers()
+    const card = boardCard('Review intake')
+    const dataTransfer = dragData()
 
-    moveCard('Review intake', 'Done')
+    fireEvent.dragStart(card, { dataTransfer })
+    expect(inColumnPortals()).toHaveLength(0)
+    expect(fireEvent.dragOver(boardColumn('Done'), { dataTransfer })).toBe(false)
+    fireEvent.drop(boardColumn('Done'), { dataTransfer })
+    fireEvent.dragEnd(boardCard('Review intake'), { dataTransfer })
 
-    expectCelebrationFor('Review intake')
-    expect(confettiPieces()).toHaveLength(0)
+    expect(inColumnPortals()).toHaveLength(0)
+    expect(arrivalPortals()).toHaveLength(0)
+    expect(arrivingElements()).toHaveLength(0)
+    expectAnnouncementFor('Review intake')
+    const portraits = boardCard('Review intake').querySelectorAll('img')
+    expect(portraits).toHaveLength(1)
+    expect(portraits[0].getAttribute('src')).toBe(BETH_IMAGE)
+    expect(portraits[0].getAttribute('alt')).toBe('')
     expect(columnTitles('Done')).toEqual(['Review intake'])
+
+    advance(2000)
+    expectNoCelebration()
+    expect(columnTitles('Done')).toEqual(['Review intake'])
+  })
+
+  it('still runs the arrival without a portrait when the character has no image', async () => {
+    await renderBoardWithItems([
+      { id: '41', name: 'Beth Smith', image: BETH_IMAGE },
+      { id: '72', name: 'Birdperson' },
+    ])
+
+    moveCard('Prepare visit', 'Done')
+
+    expectArrivalFor('Prepare visit')
+    expect(within(boardCard('Prepare visit')).getByText('Birdperson')).toBeTruthy()
+    expect(columnTitles('Done')).toEqual(['Prepare visit'])
   })
 })
