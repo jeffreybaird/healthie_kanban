@@ -113,12 +113,12 @@ p { line-height: 1.6; }
 .portal-ring-6 { animation-duration: 4s; }
 .arrival-portal {
   position: absolute;
-  top: -2.25rem;
+  top: -2.75rem;
   left: 50%;
   z-index: 3;
   display: grid;
-  width: min(80%, 10rem);
-  height: 3.5rem;
+  width: min(95%, 16rem);
+  height: 4.25rem;
   place-items: stretch;
   pointer-events: none;
   transform: translateX(-50%) scale(0);
@@ -135,9 +135,10 @@ p { line-height: 1.6; }
 }
 .item-card { position: relative; }
 .item-card[data-arriving="true"] {
-  z-index: 2;
+  z-index: 4;
   background: #fff;
-  animation: card-arrive 900ms cubic-bezier(.3, 0, .4, 1) both;
+  transform-origin: top center;
+  animation: card-arrive 900ms cubic-bezier(.3, 0, .4, 1) 120ms both;
 }
 .item-card[data-arriving="true"] .card-portrait {
   animation: portrait-bob 450ms ease-in-out 2 alternate;
@@ -149,14 +150,14 @@ p { line-height: 1.6; }
 @keyframes portal-spin { to { transform: rotate(1turn); } }
 @keyframes portal-arrive {
   0% { transform: translateX(-50%) scale(0); }
-  20%, 70% { transform: translateX(-50%) scale(1); }
+  12%, 70% { transform: translateX(-50%) scale(1); }
   100% { transform: translateX(-50%) scale(0); }
 }
 @keyframes card-arrive {
-  0% { opacity: 0; transform: translateY(calc(-1 * var(--arrival-fall, 6rem) - 1rem)) scale(.4); }
-  20% { opacity: 1; transform: translateY(calc(-1 * var(--arrival-fall, 6rem) + 1rem)) scale(.85); }
-  75% { transform: translateY(0) scale(1); }
-  87% { transform: translateY(-.5rem); }
+  0% { opacity: 0; transform: translateY(calc(-1 * var(--arrival-fall, 6rem) - 1.25rem)) scale(.15); }
+  4% { opacity: 1; }
+  70% { transform: translateY(0) scale(1); }
+  84% { transform: translateY(-.5rem); }
   100% { opacity: 1; transform: translateY(0); }
 }
 @keyframes portrait-bob {
