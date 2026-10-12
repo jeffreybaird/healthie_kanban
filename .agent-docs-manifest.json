@@ -21,7 +21,7 @@
     ".codex/hooks/workflow-manifest.json": "2096a51d67a8b398ff5803dc14bb8a6d108bd7f613777a390a6ac61e127b7a4d",
     ".codex/hooks/workflow_audit.py": "9c1ede95cd2aa69df1876ce423fd65436b55eeacc20f5c0e0539cf8a1e3b3c95",
     ".codex/hooks/workflow_guard.py": "65994a7959d9cfd06a7ba5114706fcae8316914cd8b1e950aafd529b1a747807",
-    ".docs/agent-workflow.md": "4e6f5028b82925be8076502ce69cdeba879c059ca061287d763186a21b662eb5",
+    ".docs/agent-workflow.md": "d2b91e957865fe59bc64f30809780dbbedfd1b81fc45d38c75150909948dec2a",
     ".docs/hook-diagnostics.md": "920fc41ab7eb1d23241b75cfb7453c0e4cafb8aab7686aedee026f88be358f7a",
     ".docs/react.md": "b7e8b2c6271f825881c13e21011cb22272c0746f9083c9e3036bb355c31d91c0",
     ".gitattributes": "2292927f73ce12c647a5f03fc0fc1b5847709bc1dfd5ec1493bbde4dddd6f326",
