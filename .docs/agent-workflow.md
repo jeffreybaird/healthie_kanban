@@ -58,7 +58,7 @@ status chatter or reduce the saved evidence.
 
 ## Pull request test evidence
 
-Every PR description must include relevant Ruby Cucumber or Elixir Cucumberex
+Every PR description must include relevant Ruby Cucumber
 feature/scenario specifications for its changes. Identify feature paths and
 scenario names, and include readable Gherkin, scenario/spec content, or actual
 executed scenario output. Names or links alone are insufficient; a generic
@@ -66,10 +66,7 @@ test-passed summary does not show the behavior covered.
 
 For Ruby, run `bundle exec rspec <relevant spec paths> --format documentation`
 and include the actual command, documentation output and results. Cucumber
-scenario output comes from `bundle exec cucumber --format pretty --strict`.
-For Elixir, run `mix test <relevant test paths> --trace` for focused ExUnit output
-and `MIX_ENV=test mix cucumber --format pretty --strict` for Cucumberex output.
-Use paths relevant to the included changes. Report failures, skipped and pending
+scenario output comes from `bundle exec cucumber --format pretty --strict`. Report failures, skipped and pending
 examples honestly. Never fabricate output or claim an unrun check passed. Long
 output may use expandable details blocks while keeping the result visible.
 
@@ -113,30 +110,6 @@ that leaves tests failing; do not commit incomplete cleanup. The PR description
 must record the removed code and tests, or state that no dead code was found.
 Record any test-removal patch still awaiting user approval or blocked by hooks.
 
-## Elixir doctests
-
-For Elixir projects, doctests must demonstrate meaningful use of the function with
-representative valid inputs and assert its intended result. Include at least one
-happy-path example; nil, empty-input, fallback, or error examples alone are
-insufficient. For predicates, include an input that satisfies the predicate. For
-time-dependent predicates, show valid inputs on both sides of the time condition,
-using a stable clock or generous relative offsets to avoid brittle date-dependent
-examples. Keep useful edge cases as additional examples, not substitutes for the
-happy path.
-
-Inventory `@doc` and `@moduledoc` `iex>` examples across the project. Ensure every
-module containing doctests is registered with `doctest` in ExUnit. Run all doctests
-through the normal `mix test` suite, including CI; do not leave registrations
-skipped, excluded, filtered out, or confined to a separate command. Verify actual
-execution of all doctests in the normal suite; registration alone is insufficient.
-
-Verify the module is registered with `doctest` in an ExUnit test and run those
-tests. An `iex>` block alone does not make an example execute. Review examples
-by asking whether an implementation that always returns the fallback value would
-still pass; if so, add an example exercising the intended behavior. Follow project
-rules for functions requiring database or external-service setup; cover their
-successful behavior with appropriate tests rather than token fallback doctests.
-
 ## Security advisory review
 
 Every agent review must check and explicitly report security advisories, including
@@ -170,8 +143,7 @@ logical change into commits that leave broken intermediate states.
 
 ## Precommit corrections
 
-For Elixir projects, run `mix format --force` before the remaining precommit
-checks. For Ruby projects using RuboCop, run `bundle exec rubocop --autocorrect`
+For Ruby projects using RuboCop, run `bundle exec rubocop --autocorrect`
 first, then recheck the corrected result. Correctable offenses are not a reason
 to stop before attempting safe autocorrection; unresolved lint offenses block the
 commit. Do not use `--autocorrect-all`, disable cops, or weaken lint rules to pass.
