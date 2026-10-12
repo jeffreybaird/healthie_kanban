@@ -1,4 +1,5 @@
-import { useRef, useState, type DragEvent, type FormEvent } from 'react'
+import { useCallback, useRef, useState, type DragEvent, type FormEvent } from 'react'
+import Celebration from './Celebration'
 import CharacterSelect, { type Character } from './CharacterSelect'
 
 type ColumnId = 'to-do' | 'doing' | 'done'
@@ -8,6 +9,30 @@ type Placement = 'before' | 'after'
 function dropPlacement(event: DragEvent<HTMLLIElement>): Placement {
   const bounds = event.currentTarget.getBoundingClientRect()
   return event.clientY < bounds.top + bounds.height / 2 ? 'before' : 'after'
+}
+
+function moveItemInList(
+  items: Item[],
+  itemId: number,
+  columnId: ColumnId,
+  targetId?: number,
+  placement?: Placement,
+): Item[] {
+  const item = items.find(candidate => candidate.id === itemId)
+  if (!item) return items
+  const remaining = items.filter(candidate => candidate.id !== itemId)
+  if (item.columnId !== columnId) return [...remaining, { ...item, columnId }]
+  if (targetId === undefined || targetId === itemId) return items
+  const targetIndex = remaining.findIndex(candidate => candidate.id === targetId && candidate.columnId === columnId)
+  if (targetIndex === -1) return items
+  const insertIndex = targetIndex + (placement === 'after' ? 1 : 0)
+  return [...remaining.slice(0, insertIndex), item, ...remaining.slice(insertIndex)]
+}
+
+function enteredDone(previous: Item[], next: Item[], itemId: number) {
+  const before = previous.find(item => item.id === itemId)
+  const after = next.find(item => item.id === itemId)
+  return before !== undefined && after !== undefined && before.columnId !== 'done' && after.columnId === 'done'
 }
 
 const columns: { id: ColumnId; title: string }[] = [
@@ -23,6 +48,9 @@ export default function App() {
   const nextItemId = useRef(1)
   const draggedItemId = useRef<number | null>(null)
   const [insertion, setInsertion] = useState<{ itemId: number; placement: Placement } | null>(null)
+  const [celebration, setCelebration] = useState<{ id: number; title: string } | null>(null)
+  const nextCelebrationId = useRef(1)
+  const dismissCelebration = useCallback(() => setCelebration(null), [])
 
   function addItem(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -41,17 +69,13 @@ export default function App() {
     setInsertion(null)
     if (itemId === null) return
 
-    setItems(previous => {
-      const item = previous.find(candidate => candidate.id === itemId)
-      if (!item) return previous
-      const remaining = previous.filter(candidate => candidate.id !== itemId)
-      if (item.columnId !== columnId) return [...remaining, { ...item, columnId }]
-      if (targetId === undefined || targetId === itemId) return previous
-      const targetIndex = remaining.findIndex(candidate => candidate.id === targetId && candidate.columnId === columnId)
-      if (targetIndex === -1) return previous
-      const insertIndex = targetIndex + (placement === 'after' ? 1 : 0)
-      return [...remaining.slice(0, insertIndex), item, ...remaining.slice(insertIndex)]
-    })
+    const nextItems = moveItemInList(items, itemId, columnId, targetId, placement)
+    if (nextItems === items) return
+    setItems(nextItems)
+    if (enteredDone(items, nextItems, itemId)) {
+      const movedItem = nextItems.find(item => item.id === itemId)!
+      setCelebration({ id: nextCelebrationId.current++, title: movedItem.title })
+    }
   }
 
   return (
@@ -144,6 +168,9 @@ export default function App() {
           )
         })}
       </div>
+      {celebration && (
+        <Celebration key={celebration.id} title={celebration.title} onDismiss={dismissCelebration} />
+      )}
     </main>
   )
 }
